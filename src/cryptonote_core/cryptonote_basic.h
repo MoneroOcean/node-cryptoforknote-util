@@ -25,16 +25,20 @@
 #include "misc_language.h"
 #include "tx_extra.h"
 #include "ringct/rctTypes.h"
+#include "cryptonote_protocol/blobdatatype.h"
 
 
 namespace cryptonote
 {
   struct block;
   class transaction;
+  class transaction_prefix;
   struct tx_extra_merge_mining_tag;
 
   // Implemented in cryptonote_format_utils.cpp
   bool get_transaction_hash(const transaction& t, crypto::hash& res);
+  void get_transaction_prefix_hash(const transaction_prefix& tx, crypto::hash& h);
+  void get_blob_hash(const blobdata& blob, crypto::hash& res);
   bool get_mm_tag_from_extra(const std::vector<uint8_t>& tx, tx_extra_merge_mining_tag& mm_tag);
 
   const static crypto::hash null_hash = AUTO_VAL_INIT(null_hash);
@@ -319,8 +323,17 @@ namespace cryptonote
       if (hashing_serialization)
       {
         crypto::hash miner_tx_hash;
-        if (!get_transaction_hash(b.miner_tx, miner_tx_hash))
-          return false;
+        if (b.miner_tx.version < 2) {
+          if (!get_transaction_hash(b.miner_tx, miner_tx_hash))
+            return false;
+        } else {
+          get_transaction_prefix_hash(static_cast<const transaction_prefix&>(b.miner_tx), miner_tx_hash);
+          const uint8_t data[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xbc, 0x36, 0x78, 0x9e, 0x7a, 0x1e, 0x28, 0x14, 0x36, 0x46, 0x42, 0x29, 0x82, 0x8f, 0x81, 0x7d, 0x66, 0x12, 0xf7, 0xb4, 0x77, 0xd6, 0x65, 0x91, 0xff, 0x96, 0xa9, 0xe0, 0x64, 0xbc, 0xc9, 0x8a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+          blobdata blobdata((char*)data, sizeof(data));
+          const unsigned char* p = (unsigned char*)&miner_tx_hash;
+          for (int i = 0; i != HASH_SIZE; ++ i, ++ p) blobdata[i] = *p;
+          get_blob_hash(blobdata, miner_tx_hash);
+        }
 
         crypto::hash merkle_root;
         crypto::tree_hash_from_branch(b.miner_tx_branch.data(), b.miner_tx_branch.size(), miner_tx_hash, 0, merkle_root);
