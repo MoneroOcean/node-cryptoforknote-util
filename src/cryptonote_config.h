@@ -38,4 +38,3 @@ enum POW_TYPE {
   POW_TYPE_CNPICO_TRTL       = 40
 
 };
-© 2019 GitHub, Inc.
