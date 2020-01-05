@@ -383,6 +383,7 @@ namespace cryptonote
     END_SERIALIZE()
   };
 
+  
   // Implemented below
   inline serializable_bytecoin_block make_serializable_bytecoin_block(const block& b, bool hashing_serialization, bool header_only);
 
@@ -394,14 +395,27 @@ namespace cryptonote
     uint8_t minor_version;
     uint64_t timestamp;
     crypto::hash prev_id;
-    uint32_t nonce;
+    uint64_t nonce;
+    uint64_t nonce8;
+    crypto::cycle cycle;
 
     BEGIN_SERIALIZE()
       VARINT_FIELD(major_version)
       VARINT_FIELD(minor_version)
       if (blob_type != BLOB_TYPE_FORKNOTE2) VARINT_FIELD(timestamp)
       FIELD(prev_id)
-      if (blob_type != BLOB_TYPE_FORKNOTE2) FIELD(nonce)
+      if (blob_type == BLOB_TYPE_CRYPTONOTE_CUCKOO) FIELD(nonce8)
+      if (blob_type != BLOB_TYPE_FORKNOTE2) {
+        if (blob_type == BLOB_TYPE_AEON) {
+          FIELD(nonce)
+        } else {
+          uint32_t nonce32;
+          if (typename Archive<W>::is_saving())  nonce32 = (uint32_t)nonce;
+          FIELD_N("nonce", nonce32);
+          if (!typename Archive<W>::is_saving()) nonce = nonce32;
+        }
+      }
+      if (blob_type == BLOB_TYPE_CRYPTONOTE_CUCKOO) FIELD(cycle)
     END_SERIALIZE()
   };
 
