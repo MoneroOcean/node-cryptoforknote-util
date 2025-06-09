@@ -29,6 +29,7 @@
 #include "offshore/pricing_record.h"
 #include "zephyr_oracle/pricing_record.h"
 #include "salvium_oracle/pricing_record.h"
+#include "txtypes.h"
 
 
 namespace cryptonote
@@ -426,6 +427,8 @@ namespace cryptonote
     size_t   version;
     uint64_t unlock_time;  //number of block (or time), used as a limitation like: spend this tx not early then block/time
 
+    txtype tx_type;
+
     std::vector<txin_v> vin;
     std::vector<txin_zephyr_v> vin_zephyr;
     std::vector<txin_salvium_v> vin_salvium;
@@ -752,9 +755,9 @@ namespace cryptonote
             VARINT_FIELD(amount_slippage_limit)
           }
         }
-        
+
       } else {
-  
+
         VARINT_FIELD(version)
         if (version > loki_version_2 && (blob_type == BLOB_TYPE_CRYPTONOTE_LOKI || blob_type == BLOB_TYPE_CRYPTONOTE_XTNC))
         {
@@ -762,22 +765,31 @@ namespace cryptonote
           if (version == loki_version_3_per_output_unlock_times)
             FIELD(is_deregister)
         }
-  
+
+        if (version >= static_cast<size_t>(cryptonote::txversion::v3) && (blob_type == BLOB_TYPE_CRYPTONOTE_ARQMA))
+        {
+          VARINT_FIELD(tx_type)
+          if (static_cast<uint16_t>(tx_type) >= static_cast<uint16_t>(cryptonote::txtype::_count))
+            return false;
+          FIELD(output_unlock_times)
+        }
+
         VARINT_FIELD(unlock_time)
-  
+
         if (blob_type == BLOB_TYPE_CRYPTONOTE_ZEPHYR)
           FIELD(vin_zephyr)
-        else 
+        else
           FIELD(vin)
-  
+
         if (blob_type == BLOB_TYPE_CRYPTONOTE_ZEPHYR)
           FIELD(vout_zephyr)
         else
           FIELD(vout)
-  
-        if (blob_type == BLOB_TYPE_CRYPTONOTE_LOKI || blob_type == BLOB_TYPE_CRYPTONOTE_XTNC)
+
+        if (blob_type == BLOB_TYPE_CRYPTONOTE_LOKI || blob_type == BLOB_TYPE_CRYPTONOTE_XTNC || blob_type == BLOB_TYPE_CRYPTONOTE_ARQMA)
         {
-          if (version >= loki_version_3_per_output_unlock_times && vout.size() != output_unlock_times.size()) return false;
+          if ((version >= loki_version_3_per_output_unlock_times || version >= static_cast<size_t>(cryptonote::txversion::v3)) && vout.size() != output_unlock_times.size())
+            return false;
         }
         FIELD(extra)
         if ((blob_type == BLOB_TYPE_CRYPTONOTE_LOKI || blob_type == BLOB_TYPE_CRYPTONOTE_XTNC) && version >= loki_version_4_tx_types)

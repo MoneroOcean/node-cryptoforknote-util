@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
+#include "cryptonote_basic/tx_extra.h"
 #include "common/base58.h"
 #include "serialization/binary_utils.h"
 #include <nan.h>
@@ -330,7 +331,11 @@ NAN_METHOD(construct_mm_parent_block_blob) { // (parentBlockTemplate, blob_type,
     b.set_blob_type(blob_type);
     if (!parse_and_validate_block_from_blob(input, b)) return THROW_ERROR_EXCEPTION("construct_mm_parent_block_blob: Failed to parse prent block");
     if (blob_type == BLOB_TYPE_CRYPTONOTE_LOKI || blob_type == BLOB_TYPE_CRYPTONOTE_XTNC) b.miner_tx.version = cryptonote::loki_version_2;
-  
+    if (blob_type == BLOB_TYPE_CRYPTONOTE_ARQMA) {
+      b.miner_tx.version = static_cast<size_t>(cryptonote::txversion::v3);
+      b.miner_tx.tx_type = cryptonote::txtype::standard;
+    }
+
     block b2 = AUTO_VAL_INIT(b2);
     b2.set_blob_type(BLOB_TYPE_FORKNOTE2);
     if (!parse_and_validate_block_from_blob(child_input, b2)) return THROW_ERROR_EXCEPTION("construct_mm_parent_block_blob: Failed to parse child block");
