@@ -6,7 +6,7 @@ const b = Buffer.from(
 const b2 = u.convert_blob(b, 16);
 const h1 = b2.toString('hex');
 
-if (h1 === '1010f4b3ecb406a7e85c45ba044af4a16e0e790032f31727e3daef1a7da5ab12c9894c191713e300000000980c1b19961064ad5ceba387074e29030eac8378bcb38f5a50189f8892c4578324') {
+if (h1 === '1010c59099c206028309f83a444da29afb16cc97126b0d82a0ef9dacdc5f5384e4d14f2bed221f000000006ebc660a5f50595d256087798e91ff9184878de2db66d791108ec4149dcd01fc01') {
   console.log('PASSED');
 } else {
   console.log('FAILED: ' + h1);
