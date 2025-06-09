@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace cryptonote
+namespace cryptonote_arq
 {
   enum class txversion : uint16_t
   {

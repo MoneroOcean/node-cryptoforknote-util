@@ -29,7 +29,7 @@
 #include "offshore/pricing_record.h"
 #include "zephyr_oracle/pricing_record.h"
 #include "salvium_oracle/pricing_record.h"
-#include "txtypes.h"
+#include "arq_txtypes.h"
 
 
 namespace cryptonote
@@ -62,7 +62,7 @@ namespace cryptonote
     RETURN = 7,
     MAX = 7
   };
-  
+
   /* outputs */
 
   struct txout_to_script
@@ -286,7 +286,7 @@ namespace cryptonote
     uint64_t amount;
     std::vector<uint64_t> key_offsets;
     crypto::key_image k_image;
-    
+
     BEGIN_SERIALIZE_OBJECT()
     VARINT_FIELD(amount)
     FIELD(key_offsets)
@@ -338,7 +338,7 @@ namespace cryptonote
       FIELD(k_image)
     END_SERIALIZE()
   };
-  
+
   struct txin_salvium_key
   {
     uint64_t amount;
@@ -353,7 +353,7 @@ namespace cryptonote
       FIELD(k_image)
     END_SERIALIZE()
   };
-  
+
   typedef boost::variant<txin_gen, txin_to_script, txin_to_scripthash, txin_to_key, txin_offshore, txin_onshore, txin_xasset, txin_haven_key> txin_v;
   typedef boost::variant<txin_gen, txin_to_script, txin_to_scripthash, txin_zephyr_key> txin_zephyr_v;
   typedef boost::variant<txin_gen, txin_to_script, txin_to_scripthash, txin_salvium_key> txin_salvium_v;
@@ -427,7 +427,7 @@ namespace cryptonote
     size_t   version;
     uint64_t unlock_time;  //number of block (or time), used as a limitation like: spend this tx not early then block/time
 
-    txtype tx_type;
+    cryptonote_arq::txtype arq_tx_type;
 
     std::vector<txin_v> vin;
     std::vector<txin_zephyr_v> vin_zephyr;
@@ -449,7 +449,7 @@ namespace cryptonote
 
     // SALVIUM-SPECIFIC FIELDS
     // TX type
-    cryptonote::salvium_transaction_type tx_type;
+    cryptonote::salvium_transaction_type sal_tx_type;
     crypto::public_key return_address;
     // Return address list (must be at least 1 and at most BULLETPROOF_MAX_OUTPUTS-1 - the "-1" is for the change output)
     std::vector<crypto::public_key> return_address_list;
@@ -488,10 +488,10 @@ namespace cryptonote
       if (blob_type == BLOB_TYPE_CRYPTONOTE_XHV) {
         VARINT_FIELD(version)
           //if(version == 0 || CURRENT_TRANSACTION_VERSION < version) return false;
-      
+
         // Only transactions prior to HAVEN_TYPES_TRANSACTION_VERSION are permitted to be anything other than HAVEN_TYPES and need translation
         if (version < HAVEN_TYPES_TRANSACTION_VERSION) {
-  
+
           if (version < POU_TRANSACTION_VERSION) {
             VARINT_FIELD(unlock_time)
           }
@@ -723,7 +723,7 @@ namespace cryptonote
           }
           return true;
         }
-  
+
         FIELD(vin)
         FIELD(vout_xhv)
         FIELD(extra)
@@ -739,10 +739,10 @@ namespace cryptonote
         FIELD(vin_salvium)
         FIELD(vout_salvium)
         FIELD(extra)
-        VARINT_FIELD(tx_type)
-        if (tx_type != cryptonote::salvium_transaction_type::PROTOCOL) {
+        VARINT_FIELD(sal_tx_type)
+        if (sal_tx_type != cryptonote::salvium_transaction_type::PROTOCOL) {
           VARINT_FIELD(amount_burnt)
-          if (tx_type != cryptonote::salvium_transaction_type::MINER) {
+          if (sal_tx_type != cryptonote::salvium_transaction_type::MINER) {
             if (type == cryptonote::salvium_transaction_type::TRANSFER && version >= TRANSACTION_VERSION_N_OUTS) {
               FIELD(return_address_list)
               FIELD(return_address_change_mask)
@@ -766,10 +766,10 @@ namespace cryptonote
             FIELD(is_deregister)
         }
 
-        if (version >= static_cast<size_t>(cryptonote::txversion::v3) && (blob_type == BLOB_TYPE_CRYPTONOTE_ARQMA))
+        if (version >= static_cast<size_t>(cryptonote_arq::txversion::v3) && (blob_type == BLOB_TYPE_CRYPTONOTE_ARQMA))
         {
-          VARINT_FIELD(tx_type)
-          if (static_cast<uint16_t>(tx_type) >= static_cast<uint16_t>(cryptonote::txtype::_count))
+          VARINT_FIELD(arq_tx_type)
+          if (static_cast<uint16_t>(arq_tx_type) >= static_cast<uint16_t>(cryptonote_arq::txtype::_count))
             return false;
           FIELD(output_unlock_times)
         }
@@ -788,7 +788,7 @@ namespace cryptonote
 
         if (blob_type == BLOB_TYPE_CRYPTONOTE_LOKI || blob_type == BLOB_TYPE_CRYPTONOTE_XTNC || blob_type == BLOB_TYPE_CRYPTONOTE_ARQMA)
         {
-          if ((version >= loki_version_3_per_output_unlock_times || version >= static_cast<size_t>(cryptonote::txversion::v3)) && vout.size() != output_unlock_times.size())
+          if ((version >= loki_version_3_per_output_unlock_times || version >= static_cast<size_t>(cryptonote_arq::txversion::v3)) && vout.size() != output_unlock_times.size())
             return false;
         }
         FIELD(extra)
@@ -936,7 +936,7 @@ namespace cryptonote
     output_unlock_times.clear();
     collateral_indices.clear();
     // SAL
-    tx_type = cryptonote::salvium_transaction_type::UNSET;
+    sal_tx_type = cryptonote::salvium_transaction_type::UNSET;
     return_address = cryptonote::null_pkey;
     return_address_list.clear();
     return_address_change_mask.clear();
@@ -944,6 +944,8 @@ namespace cryptonote
     source_asset_type.clear();
     destination_asset_type.clear();
     amount_slippage_limit = 0;
+    // ARQ
+    arq_tx_type = 0;
   }
 
   inline

@@ -33,7 +33,7 @@ blobdata uint64be_to_blob(uint64_t num) {
     res[7] = num       & 0xff;
     return res;
 }
-                             
+
 static bool fillExtra(cryptonote::block& block1, const cryptonote::block& block2) {
     cryptonote::tx_extra_merge_mining_tag mm_tag;
     mm_tag.depth = 0;
@@ -251,7 +251,7 @@ NAN_METHOD(address_decode) {
     Local<Object> target = info[0]->ToObject(isolate->GetCurrentContext()).ToLocalChecked();
 
     if (!Buffer::HasInstance(target)) return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
-    
+
     blobdata input = std::string(Buffer::Data(target), Buffer::Length(target));
 
     blobdata data;
@@ -332,8 +332,8 @@ NAN_METHOD(construct_mm_parent_block_blob) { // (parentBlockTemplate, blob_type,
     if (!parse_and_validate_block_from_blob(input, b)) return THROW_ERROR_EXCEPTION("construct_mm_parent_block_blob: Failed to parse prent block");
     if (blob_type == BLOB_TYPE_CRYPTONOTE_LOKI || blob_type == BLOB_TYPE_CRYPTONOTE_XTNC) b.miner_tx.version = cryptonote::loki_version_2;
     if (blob_type == BLOB_TYPE_CRYPTONOTE_ARQMA) {
-      b.miner_tx.version = static_cast<size_t>(cryptonote::txversion::v3);
-      b.miner_tx.tx_type = cryptonote::txtype::standard;
+      b.miner_tx.arq_version = static_cast<size_t>(cryptonote_arq::txversion::v3);
+      b.miner_tx.arq_tx_type = cryptonote_arq::txtype::standard;
     }
 
     block b2 = AUTO_VAL_INIT(b2);
@@ -374,7 +374,7 @@ NAN_METHOD(construct_mm_child_block_blob) { // (shareBuffer, blob_type, childBlo
     if (!parse_and_validate_block_from_blob(child_block_template_blob, b2)) return THROW_ERROR_EXCEPTION("construct_mm_child_block_blob: Failed to parse child block");
 
     if (!mergeBlocks(b, b2, std::vector<crypto::hash>())) return THROW_ERROR_EXCEPTION("construct_mm_child_block_blob: Failed to postprocess mining block");
-    
+
     blobdata output = "";
     if (!block_to_blob(b2, output)) return THROW_ERROR_EXCEPTION("construct_mm_child_block_blob: Failed to convert child block to blob");
 
