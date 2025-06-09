@@ -332,7 +332,7 @@ NAN_METHOD(construct_mm_parent_block_blob) { // (parentBlockTemplate, blob_type,
     if (!parse_and_validate_block_from_blob(input, b)) return THROW_ERROR_EXCEPTION("construct_mm_parent_block_blob: Failed to parse prent block");
     if (blob_type == BLOB_TYPE_CRYPTONOTE_LOKI || blob_type == BLOB_TYPE_CRYPTONOTE_XTNC) b.miner_tx.version = cryptonote::loki_version_2;
     if (blob_type == BLOB_TYPE_CRYPTONOTE_ARQMA) {
-      b.miner_tx.arq_version = static_cast<size_t>(cryptonote_arq::txversion::v3);
+      b.miner_tx.version = static_cast<size_t>(cryptonote_arq::txversion::v3);
       b.miner_tx.arq_tx_type = cryptonote_arq::txtype::standard;
     }
 
