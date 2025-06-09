@@ -945,7 +945,7 @@ namespace cryptonote
     destination_asset_type.clear();
     amount_slippage_limit = 0;
     // ARQ
-    arq_tx_type = 0;
+    arq_tx_type = cryptonote_arq::txtype::standard;
   }
 
   inline
