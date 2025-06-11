@@ -91,7 +91,7 @@ namespace zephyr_oracle
 
     public:
 
-      // Fields 
+      // Fields
       uint64_t spot;
       uint64_t moving_average;
       uint64_t stable;
@@ -127,7 +127,7 @@ namespace zephyr_oracle
   {
    return a.equal(b);
   }
-  
+
   inline bool operator!=(const pricing_record& a, const pricing_record& b) noexcept
   {
    return !a.equal(b);
@@ -252,4 +252,4 @@ namespace zephyr_oracle
     };
   };
 
-} // oracle
+} // zephyr_oracle

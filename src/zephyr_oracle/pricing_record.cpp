@@ -67,7 +67,7 @@ namespace zephyr_oracle
       END_KV_SERIALIZE_MAP()
     };
   }
-  
+
   pricing_record::pricing_record() noexcept
     : spot(0)
     , moving_average(0)
@@ -152,7 +152,7 @@ namespace zephyr_oracle
     ::memcpy(signature, orig.signature, sizeof(signature));
     return *this;
   }
-  
+
   bool pricing_record::equal(const pricing_record& other) const noexcept
   {
     return ((spot == other.spot) &&
@@ -256,7 +256,7 @@ namespace zephyr_oracle
   }
 
   // overload for pr validation for block
-  bool pricing_record::valid(uint32_t hf_version, uint64_t bl_timestamp, uint64_t last_bl_timestamp) const 
+  bool pricing_record::valid(uint32_t hf_version, uint64_t bl_timestamp, uint64_t last_bl_timestamp) const
   {
     if (hf_version < 3) {
       if (!this->empty())
@@ -298,4 +298,3 @@ namespace zephyr_oracle
     return true;
   }
 }
-

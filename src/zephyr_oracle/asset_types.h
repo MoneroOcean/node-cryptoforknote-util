@@ -32,23 +32,37 @@
 namespace zephyr_oracle {
 
   const std::vector<std::string> ASSET_TYPES = {"ZEPH", "ZEPHUSD", "ZEPHRSV", "ZYIELD"};
+  const std::vector<std::string> RESERVE_TYPES = {"ZEPH", "ZEPHUSD", "ZEPHRSV", "ZYIELD", "ZYIELDRSV"};
+
+  const std::vector<std::string> ASSET_TYPES_V2 = {"ZPH", "ZSD", "ZRS", "ZYS"};
+  const std::vector<std::string> RESERVE_TYPES_V2 = {"DJED", "YIELD"};
 
   class asset_type_counts
   {
 
     public:
 
-      // Fields 
+      // Fields
       uint64_t ZEPH;
       uint64_t ZEPHUSD;
       uint64_t ZEPHRSV;
       uint64_t ZYIELD;
+
+      // v2 fields
+      uint64_t ZPH;
+      uint64_t ZSD;
+      uint64_t ZRS;
+      uint64_t ZYS;
 
       asset_type_counts() noexcept
         : ZEPH(0)
         , ZEPHUSD(0)
         , ZEPHRSV(0)
         , ZYIELD(0)
+        , ZPH(0)
+        , ZSD(0)
+        , ZRS(0)
+        , ZYS(0)
       {
       }
 
@@ -62,6 +76,14 @@ namespace zephyr_oracle {
           return ZEPHRSV;
         } else if (asset_type == "ZYIELD") {
           return ZYIELD;
+        } else if (asset_type == "ZPH") {
+          return ZPH;
+        } else if (asset_type == "ZSD") {
+          return ZSD;
+        } else if (asset_type == "ZRS") {
+          return ZRS;
+        } else if (asset_type == "ZYS") {
+          return ZYS;
         }
 
         return 0;
@@ -77,6 +99,14 @@ namespace zephyr_oracle {
           ZEPHRSV += val;
         } else if (asset_type == "ZYIELD") {
           ZYIELD += val;
+        } else if (asset_type == "ZPH") {
+          ZPH += val;
+        } else if (asset_type == "ZSD") {
+          ZSD += val;
+        } else if (asset_type == "ZRS") {
+          ZRS += val;
+        } else if (asset_type == "ZYS") {
+          ZYS += val;
         }
       }
   };
