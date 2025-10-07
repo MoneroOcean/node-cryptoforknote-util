@@ -52,6 +52,8 @@ extern "C" {
 #include "serialization/vector.h"
 #include "serialization/binary_archive.h"
 
+#include "cryptonote_protocol/enums.h"
+
 
 //Define this flag when debugging to get additional info on the console
 #ifdef DBG

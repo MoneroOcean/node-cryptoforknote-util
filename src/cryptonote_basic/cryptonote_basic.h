@@ -26,6 +26,7 @@
 #include "tx_extra.h"
 #include "ringct/rctTypes.h"
 #include "cryptonote_protocol/blobdatatype.h"
+#include "cryptonote_protocol/enums.h"
 #include "offshore/pricing_record.h"
 #include "zephyr_oracle/pricing_record.h"
 #include "salvium_oracle/pricing_record.h"
@@ -50,19 +51,6 @@ namespace cryptonote
   const static crypto::public_key null_pkey = AUTO_VAL_INIT(null_pkey);
 
   typedef std::vector<crypto::signature> ring_signature;
-
-  enum salvium_transaction_type
-  {
-    UNSET = 0,
-    MINER = 1,
-    PROTOCOL = 2,
-    TRANSFER = 3,
-    CONVERT = 4,
-    BURN = 5,
-    STAKE = 6,
-    RETURN = 7,
-    MAX = 7
-  };
 
   /* outputs */
 
