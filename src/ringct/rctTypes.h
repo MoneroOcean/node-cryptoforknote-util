@@ -413,6 +413,7 @@ namespace rct {
       key p_r;
       zk_proof pr_proof; // p_r
       zk_proof sa_proof; // spend authority proof
+      salvium_data_t salvium_data;
 
       rctSigBase() :
         type(RCTTypeNull), message{}, mixRing{}, pseudoOuts{}, ecdhInfo{}, outPk{}, txnFee(0), p_r{}, pr_proof{}, sa_proof{}
