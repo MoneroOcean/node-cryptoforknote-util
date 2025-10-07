@@ -111,6 +111,22 @@ namespace rct {
     typedef std::vector<ctkey> ctkeyV;
     typedef std::vector<ctkeyV> ctkeyM;
 
+    struct carrot_ctkey {
+      key x;
+      key y;
+      key mask; //C here if public
+
+      bool operator==(const carrot_ctkey &other) const {
+        return (x == other.x) && (y == other.y) && (mask == other.mask);
+      }
+
+      bool operator!=(const carrot_ctkey &other) const {
+        return !(*this == other);
+      }
+    };
+    typedef std::vector<carrot_ctkey> carrot_ctkeyV;
+    typedef std::vector<carrot_ctkey> carrot_ctkeyM;
+
     //used for multisig data
     struct multisig_kLRki {
         key k;
@@ -159,12 +175,12 @@ namespace rct {
         key64 s1;
         key ee;
     };
-  
+
     //Container for precomp
     struct geDsmp {
         ge_dsmp k;
     };
-    
+
     //just contains the necessary keys to represent MLSAG sigs
     //c.f. https://eprint.iacr.org/2015/1098
     struct mgSig {
@@ -189,6 +205,24 @@ namespace rct {
 
         BEGIN_SERIALIZE_OBJECT()
             FIELD(s)
+            FIELD(c1)
+            // FIELD(I) - not serialized, it can be reconstructed
+            FIELD(D)
+        END_SERIALIZE()
+    };
+
+    // TCLSAG signature
+    struct tclsag {
+        keyV sx; // x scalars(responses)
+        keyV sy; // y scalars(responses)
+        key c1;
+
+        key I; // signing key image
+        key D; // commitment key image
+
+        BEGIN_SERIALIZE_OBJECT()
+            FIELD(sx)
+            FIELD(sy)
             FIELD(c1)
             // FIELD(I) - not serialized, it can be reconstructed
             FIELD(D)
@@ -305,7 +339,9 @@ namespace rct {
       RCTTypeBulletproof2 = 4,
       RCTTypeCLSAG = 5,
       RCTTypeBulletproofPlus = 6,
-      RCTTypeFullProofs = 7
+      RCTTypeFullProofs = 7,
+      RCTTypeSalviumZero = 8,
+      RCTTypeSalviumOne = 9
     };
     enum RangeProofType { RangeProofBorromean, RangeProofBulletproof, RangeProofMultiOutputBulletproof, RangeProofPaddedBulletproof };
     struct RCTConfig {
@@ -318,6 +354,51 @@ namespace rct {
         VARINT_FIELD(bp_version)
       END_SERIALIZE()
     };
+
+    enum SalviumDataType { SalviumZero=0, SalviumZeroAudit=1, SalviumOne=2 };
+    struct salvium_input_data_t {
+      crypto::key_derivation aR;
+      xmr_amount amount;
+      size_t i;
+      uint8_t origin_tx_type;
+      crypto::key_derivation aR_stake;
+      size_t i_stake;
+
+      BEGIN_SERIALIZE_OBJECT()
+        FIELD(aR)
+        VARINT_FIELD(amount)
+        VARINT_FIELD(i)
+        VARINT_FIELD(origin_tx_type)
+        if (origin_tx_type != cryptonote::salvium_transaction_type::UNSET) {
+          FIELD(aR_stake)
+          FIELD(i_stake)
+        }
+      END_SERIALIZE()
+    };
+    struct salvium_data_t {
+
+      uint8_t salvium_data_type; // flag to indicate what type of data is valid
+      zk_proof pr_proof; // p_r
+      zk_proof sa_proof; // spend authority proof
+      zk_proof cz_proof; // change is zero proof
+      std::vector<salvium_input_data_t> input_verification_data;
+      crypto::public_key spend_pubkey;
+      std::string enc_view_privkey_str;
+
+      BEGIN_SERIALIZE_OBJECT()
+        VARINT_FIELD(salvium_data_type)
+        FIELD(pr_proof)
+        FIELD(sa_proof)
+        if (salvium_data_type == SalviumZeroAudit)
+        {
+          FIELD(cz_proof)
+          FIELD(input_verification_data)
+          FIELD(spend_pubkey)
+          FIELD(enc_view_privkey_str)
+        }
+      END_SERIALIZE()
+    };
+
     struct rctSigBase {
       uint8_t type;
       key message;
@@ -328,20 +409,20 @@ namespace rct {
       ctkeyV outPk;
       xmr_amount txnFee = 0; // contains b
       key p_r;
-      zk_proof pr_proof; // p_r 
+      zk_proof pr_proof; // p_r
       zk_proof sa_proof; // spend authority proof
-      
+
       rctSigBase() :
         type(RCTTypeNull), message{}, mixRing{}, pseudoOuts{}, ecdhInfo{}, outPk{}, txnFee(0), p_r{}, pr_proof{}, sa_proof{}
       {}
-      
+
       template<bool W, template <bool> class Archive>
       bool serialize_rctsig_base(Archive<W> &ar, size_t inputs, size_t outputs)
       {
         FIELD(type)
         if (type == RCTTypeNull)
           return ar.stream().good();
-        if (type != RCTTypeFull && type != RCTTypeSimple && type != RCTTypeBulletproof && type != RCTTypeBulletproof2 && type != RCTTypeCLSAG && type != RCTTypeBulletproofPlus && type != RCTTypeFullProofs)
+        if (type != RCTTypeFull && type != RCTTypeSimple && type != RCTTypeBulletproof && type != RCTTypeBulletproof2 && type != RCTTypeCLSAG && type != RCTTypeBulletproofPlus && type != RCTTypeFullProofs && type != RCTTypeSalviumZero && type != RCTTypeSalviumOne)
           return false;
         VARINT_FIELD(txnFee)
         // inputs/outputs not saved, only here for serialization help
@@ -354,7 +435,7 @@ namespace rct {
           return false;
         for (size_t i = 0; i < outputs; ++i)
         {
-            if (type == RCTTypeBulletproof2 || type == RCTTypeCLSAG || type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs)
+       	    if (type == RCTTypeBulletproof2 || type == RCTTypeCLSAG || type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs || type == RCTTypeSalviumZero || type == RCTTypeSalviumOne)
             {
               // Since RCTTypeBulletproof2 enote types, we don't serialize the blinding factor, and only serialize the
               // first 8 bytes of ecdhInfo[i].amount
@@ -370,10 +451,10 @@ namespace rct {
               FIELDS(ecdhInfo[i])
             }
             if (outputs - i > 1)
-              ar.delimit_array(); 
+              ar.delimit_array();
         }
         ar.end_array();
-        
+
         ar.tag("outPk");
         ar.begin_array();
         PREPARE_CUSTOM_VECTOR_SERIALIZATION(outputs, outPk);
@@ -388,7 +469,11 @@ namespace rct {
         ar.end_array();
 
         FIELD(p_r)
-        if (type == RCTTypeFullProofs)
+        if (type == RCTTypeSalviumZero || type == RCTTypeSalviumOne)
+        {
+          FIELD(salvium_data)
+        }
+        else if (type == RCTTypeFullProofs)
         {
           FIELD(pr_proof)
           FIELD(sa_proof)
@@ -405,7 +490,11 @@ namespace rct {
           FIELD(outPk)
           VARINT_FIELD(txnFee)
           FIELD(p_r)
-          if (type == RCTTypeFullProofs) {
+	  if (type == RCTTypeSalviumZero || type == RCTTypeSalviumOne)
+          {
+            FIELD(salvium_data)
+          }
+          else if (type == RCTTypeFullProofs) {
             FIELD(pr_proof)
             FIELD(sa_proof)
           }
@@ -417,6 +506,7 @@ namespace rct {
         std::vector<BulletproofPlus> bulletproofs_plus;
         std::vector<mgSig> MGs; // simple rct has N, full has 1
         std::vector<clsag> CLSAGs;
+	std::vector<tclsag> TCLSAGs;
         keyV pseudoOuts; //C - for simple rct
 
         // when changing this function, update cryptonote::get_pruned_transaction_weight
@@ -431,9 +521,9 @@ namespace rct {
             return false;
           if (type == RCTTypeNull)
             return ar.stream().good();
-          if (type != RCTTypeFull && type != RCTTypeSimple && type != RCTTypeBulletproof && type != RCTTypeBulletproof2 && type != RCTTypeCLSAG && type != RCTTypeBulletproofPlus && type != RCTTypeFullProofs)
+	  if (type != RCTTypeFull && type != RCTTypeSimple && type != RCTTypeBulletproof && type != RCTTypeBulletproof2 && type != RCTTypeCLSAG && type != RCTTypeBulletproofPlus && type != RCTTypeFullProofs && type != RCTTypeSalviumZero && type != RCTTypeSalviumOne)
             return false;
-          if (type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs)
+	  if (type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs || type == RCTTypeSalviumZero || type == RCTTypeSalviumOne)
           {
             uint32_t nbp = bulletproofs_plus.size();
             VARINT_FIELD(nbp)
@@ -490,7 +580,60 @@ namespace rct {
             ar.end_array();
           }
 
-          if (type == RCTTypeCLSAG || type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs)
+	  if (type == RCTTypeSalviumOne)
+          {
+            ar.tag("TCLSAGs");
+            ar.begin_array();
+            PREPARE_CUSTOM_VECTOR_SERIALIZATION(inputs, TCLSAGs);
+            if (TCLSAGs.size() != inputs)
+              return false;
+            for (size_t i = 0; i < inputs; ++i)
+            {
+              // we save the TCLSAGs contents directly, because we want it to save its
+              // arrays without the size prefixes, and the load can't know what size
+              // to expect if it's not in the data
+              ar.begin_object();
+              ar.tag("sx");
+              ar.begin_array();
+              PREPARE_CUSTOM_VECTOR_SERIALIZATION(mixin + 1, TCLSAGs[i].sx);
+              if (TCLSAGs[i].sx.size() != mixin + 1)
+                return false;
+              for (size_t j = 0; j <= mixin; ++j)
+              {
+                FIELDS(TCLSAGs[i].sx[j])
+                if (mixin + 1 - j > 1)
+                  ar.delimit_array();
+              }
+              ar.end_array();
+
+              ar.tag("sy");
+              ar.begin_array();
+              PREPARE_CUSTOM_VECTOR_SERIALIZATION(mixin + 1, TCLSAGs[i].sy);
+              if (TCLSAGs[i].sy.size() != mixin + 1)
+                return false;
+              for (size_t j = 0; j <= mixin; ++j)
+              {
+                FIELDS(TCLSAGs[i].sy[j])
+                if (mixin + 1 - j > 1)
+                  ar.delimit_array();
+              }
+              ar.end_array();
+
+              ar.tag("c1");
+              FIELDS(TCLSAGs[i].c1)
+
+              // CLSAGs[i].I not saved, it can be reconstructed
+              ar.tag("D");
+              FIELDS(TCLSAGs[i].D)
+              ar.end_object();
+
+              if (inputs - i > 1)
+                 ar.delimit_array();
+            }
+
+            ar.end_array();
+
+          } else if (type == RCTTypeCLSAG || type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs || type == RCTTypeSalviumZero)
           {
             ar.tag("CLSAGs");
             ar.begin_array();
@@ -565,7 +708,7 @@ namespace rct {
                     ar.delimit_array();
                 }
                 ar.end_array();
-  
+
                 if (mixin + 1 - j > 1)
                   ar.delimit_array();
               }
@@ -581,7 +724,7 @@ namespace rct {
             }
             ar.end_array();
           }
-          if (type == RCTTypeBulletproof || type == RCTTypeBulletproof2 || type == RCTTypeCLSAG || type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs)
+	  if (type == RCTTypeBulletproof || type == RCTTypeBulletproof2 || type == RCTTypeCLSAG || type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs || type == RCTTypeSalviumZero || type == RCTTypeSalviumOne)
           {
             ar.tag("pseudoOuts");
             ar.begin_array();
@@ -605,6 +748,7 @@ namespace rct {
           FIELD(bulletproofs_plus)
           FIELD(MGs)
           FIELD(CLSAGs)
+	  FIELD(TCLSAGs)
           FIELD(pseudoOuts)
         END_SERIALIZE()
     };
@@ -613,12 +757,12 @@ namespace rct {
 
         keyV& get_pseudo_outs()
         {
-          return type == RCTTypeBulletproof || type == RCTTypeBulletproof2 || type == RCTTypeCLSAG || type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs ? p.pseudoOuts : pseudoOuts;
+  	  return type == RCTTypeBulletproof || type == RCTTypeBulletproof2 || type == RCTTypeCLSAG || type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs || type == RCTTypeSalviumZero || type == RCTTypeSalviumOne ? p.pseudoOuts : pseudoOuts;
         }
 
         keyV const& get_pseudo_outs() const
         {
-          return type == RCTTypeBulletproof || type == RCTTypeBulletproof2 || type == RCTTypeCLSAG || type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs ? p.pseudoOuts : pseudoOuts;
+          return type == RCTTypeBulletproof || type == RCTTypeBulletproof2 || type == RCTTypeCLSAG || type == RCTTypeBulletproofPlus || type == RCTTypeFullProofs || type == RCTTypeSalviumZero || type == RCTTypeSalviumOne ? p.pseudoOuts : pseudoOuts;
         }
 
         BEGIN_SERIALIZE_OBJECT()
@@ -790,5 +934,8 @@ VARIANT_TAG(binary_archive, rct::multisig_out, 0x9e);
 VARIANT_TAG(binary_archive, rct::clsag, 0x9f);
 VARIANT_TAG(binary_archive, rct::BulletproofPlus, 0xa0);
 VARIANT_TAG(binary_archive, rct::zk_proof, 0xa1);
+VARIANT_TAG(binary_archive, rct::salvium_input_data_t, 0xa2);
+VARIANT_TAG(binary_archive, rct::salvium_data_t, 0xa3);
+VARIANT_TAG(binary_archive, rct::tclsag, 0xa4);
 
 #endif  /* RCTTYPES_H */

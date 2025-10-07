@@ -29,6 +29,7 @@
 #include "offshore/pricing_record.h"
 #include "zephyr_oracle/pricing_record.h"
 #include "salvium_oracle/pricing_record.h"
+#include "carrot_core/core_types.h"
 #include "arq_txtypes.h"
 
 
@@ -216,6 +217,25 @@ namespace cryptonote
     END_SERIALIZE()
   };
 
+
+  struct txout_to_carrot_v1
+  {
+    crypto::public_key key;                                  // K_o
+    std::string asset_type;
+    carrot::view_tag_t view_tag;                             // vt
+    carrot::encrypted_janus_anchor_t encrypted_janus_anchor; // anchor_enc
+
+    // Encrypted amount a_enc and amount commitment C_a are stored in rct::rctSigBase
+    // This allows for reuse of this output type between coinbase and non-coinbase txs
+
+    BEGIN_SERIALIZE_OBJECT()
+      FIELD(key)
+      FIELD(asset_type)
+      FIELD(view_tag)
+      FIELD(encrypted_janus_anchor)
+    END_SERIALIZE()
+  };
+
   /* inputs */
 
   struct txin_gen
@@ -361,6 +381,7 @@ namespace cryptonote
   typedef boost::variant<txout_to_script, txout_to_scripthash, txout_to_key, txout_to_tagged_key> txout_target_v;
   typedef boost::variant<txout_to_script, txout_to_scripthash, txout_to_key, txout_offshore, txout_xasset, txout_haven_key, txout_haven_tagged_key> txout_xhv_target_v;
   typedef boost::variant<txout_to_script, txout_to_scripthash, txout_salvium_key, txout_salvium_tagged_key> txout_salvium_target_v;
+  typedef boost::variant<txout_to_script, txout_to_scripthash, txout_to_key, txout_to_tagged_key, txout_to_carrot_v1> txout_carrot_target_v;
 
   typedef boost::variant<txout_to_script, txout_to_scripthash, txout_zephyr_tagged_key> txout_stablero_target_v;
 
@@ -405,6 +426,23 @@ namespace cryptonote
     BEGIN_SERIALIZE_OBJECT()
       VARINT_FIELD(amount)
       FIELD(target)
+    END_SERIALIZE()
+  };
+
+  class protocol_tx_data_t {
+  public:
+    uint8_t version;
+    crypto::public_key return_address;
+    crypto::public_key return_pubkey;
+    carrot::view_tag_t return_view_tag;
+    carrot::encrypted_janus_anchor_t return_anchor_enc;
+
+    BEGIN_SERIALIZE_OBJECT()
+      VARINT_FIELD(version)
+      FIELD(return_address)
+      FIELD(return_pubkey)
+      FIELD(return_view_tag)
+      FIELD(return_anchor_enc)
     END_SERIALIZE()
   };
 
@@ -465,6 +503,7 @@ namespace cryptonote
     //uint64_t amount_burnt;
     // Slippage limit
     uint64_t amount_slippage_limit;
+    protocol_tx_data_t protocol_tx_data;
 
 
     //
@@ -740,15 +779,21 @@ namespace cryptonote
         FIELD(vout_salvium)
         FIELD(extra)
         VARINT_FIELD(sal_tx_type)
-        if (sal_tx_type != cryptonote::salvium_transaction_type::PROTOCOL) {
+        if (sal_tx_type != cryptonote::salvium_transaction_type::UNSET && sal_tx_type != cryptonote::salvium_transaction_type::PROTOCOL) {
           VARINT_FIELD(amount_burnt)
           if (sal_tx_type != cryptonote::salvium_transaction_type::MINER) {
             if (type == cryptonote::salvium_transaction_type::TRANSFER && version >= TRANSACTION_VERSION_N_OUTS) {
               FIELD(return_address_list)
               FIELD(return_address_change_mask)
             } else {
-              FIELD(return_address)
-              FIELD(return_pubkey)
+              if (type == cryptonote::salvium_transaction_type::STAKE &&
+                  version >= TRANSACTION_VERSION_CARROT)
+              {
+                FIELD(protocol_tx_data)
+              } else {
+                FIELD(return_address)
+                FIELD(return_pubkey)
+              }
             }
             FIELD(source_asset_type)
             FIELD(destination_asset_type)
@@ -941,6 +986,10 @@ namespace cryptonote
     return_address_list.clear();
     return_address_change_mask.clear();
     return_pubkey = cryptonote::null_pkey;
+    protocol_tx_data.return_address = cryptonote::null_pkey;
+    protocol_tx_data.return_pubkey = cryptonote::null_pkey;
+    protocol_tx_data.return_view_tag = {};
+    protocol_tx_data.return_anchor_enc = {};
     source_asset_type.clear();
     destination_asset_type.clear();
     amount_slippage_limit = 0;
@@ -1209,6 +1258,7 @@ namespace cryptonote
   {
     crypto::public_key m_spend_public_key;
     crypto::public_key m_view_public_key;
+    bool m_is_carrot;
 
     BEGIN_SERIALIZE_OBJECT()
       FIELD(m_spend_public_key)
@@ -1219,6 +1269,18 @@ namespace cryptonote
       KV_SERIALIZE_VAL_POD_AS_BLOB_FORCE(m_spend_public_key)
       KV_SERIALIZE_VAL_POD_AS_BLOB_FORCE(m_view_public_key)
     END_KV_SERIALIZE_MAP()
+
+    bool operator==(const account_public_address& rhs) const
+    {
+      return m_spend_public_key == rhs.m_spend_public_key &&
+             m_view_public_key == rhs.m_view_public_key &&
+             m_is_carrot == rhs.m_is_carrot;
+    }
+
+    bool operator!=(const account_public_address& rhs) const
+    {
+      return !(*this == rhs);
+    }
   };
 
   struct integrated_address {
@@ -1261,6 +1323,7 @@ VARIANT_TAG(binary_archive, cryptonote::txout_zephyr_tagged_key, 0x2);
 VARIANT_TAG(binary_archive, cryptonote::txout_to_tagged_key, 0x3);
 VARIANT_TAG(binary_archive, cryptonote::txout_salvium_tagged_key, 0x3);
 VARIANT_TAG(binary_archive, cryptonote::txout_offshore, 0x3);
+VARIANT_TAG(binary_archive, cryptonote::txout_to_carrot_v1, 0x4);
 VARIANT_TAG(binary_archive, cryptonote::txout_xasset, 0x5);
 VARIANT_TAG(binary_archive, cryptonote::txout_haven_key, 0x6);
 VARIANT_TAG(binary_archive, cryptonote::txout_haven_tagged_key, 0x7);
