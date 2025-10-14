@@ -409,7 +409,7 @@ namespace cryptonote
   struct tx_out_salvium
   {
     uint64_t amount;
-    txout_salvium_target_v target;
+    txout_carrot_target_v target;
 
     BEGIN_SERIALIZE_OBJECT()
       VARINT_FIELD(amount)

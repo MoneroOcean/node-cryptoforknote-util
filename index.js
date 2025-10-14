@@ -130,14 +130,14 @@ module.exports.RavenBlockTemplate = function(rpcData, poolAddress) {
     header.writeUInt32BE(rpcData.version, position += 32, 4);           // version        121-153
     header = reverseBuffer(header);
   }
-  
+
   let blob = Buffer.concat([
     header, // 80 bytes
     Buffer.from('AAAAAAAAAAAAAAAA', 'hex'), // 8 bytes
     Buffer.from('BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', 'hex'), // 32 bytes
     varuint.encode(rpcData.transactions.length + 1, Buffer.alloc(varuint.encodingLength(rpcData.transactions.length + 1)), 0)
   ]);
-  const offset1 = blob.length; 
+  const offset1 = blob.length;
   blob = Buffer.concat([ blob, Buffer.from(txCoinbase.toHex(), 'hex') ]);
 
   rpcData.transactions.forEach(function (value) {
