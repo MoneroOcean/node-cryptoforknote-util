@@ -761,7 +761,7 @@ namespace cryptonote
       } else if (blob_type == BLOB_TYPE_CRYPTONOTE_SALVIUM) {
 
         VARINT_FIELD(version)
-        //if(version == 0 || CURRENT_TRANSACTION_VERSION < version) return false;
+        if(version == 0 || CURRENT_TRANSACTION_VERSION < 4) return false;
         VARINT_FIELD(unlock_time)
         FIELD(vin_salvium)
         FIELD(vout_salvium)
@@ -770,11 +770,11 @@ namespace cryptonote
         if (sal_tx_type != cryptonote::salvium_transaction_type::UNSET && sal_tx_type != cryptonote::salvium_transaction_type::PROTOCOL) {
           VARINT_FIELD(amount_burnt)
           if (sal_tx_type != cryptonote::salvium_transaction_type::MINER) {
-            if (type == cryptonote::salvium_transaction_type::TRANSFER && version >= TRANSACTION_VERSION_N_OUTS) {
+            if (sal_tx_type == cryptonote::salvium_transaction_type::TRANSFER && version >= TRANSACTION_VERSION_N_OUTS) {
               FIELD(return_address_list)
               FIELD(return_address_change_mask)
             } else {
-              if (type == cryptonote::salvium_transaction_type::STAKE &&
+              if (sal_tx_type == cryptonote::salvium_transaction_type::STAKE &&
                   version >= TRANSACTION_VERSION_CARROT)
               {
                 FIELD(protocol_tx_data)
