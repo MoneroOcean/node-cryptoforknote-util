@@ -761,7 +761,7 @@ namespace cryptonote
       } else if (blob_type == BLOB_TYPE_CRYPTONOTE_SALVIUM) {
 
         VARINT_FIELD(version)
-        if(version == 0 || CURRENT_TRANSACTION_VERSION < 4) return false;
+        if(version == 0 || 4 < version) return false;
         VARINT_FIELD(unlock_time)
         FIELD(vin_salvium)
         FIELD(vout_salvium)
