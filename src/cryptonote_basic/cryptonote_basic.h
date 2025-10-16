@@ -369,7 +369,7 @@ namespace cryptonote
   typedef boost::variant<txout_to_script, txout_to_scripthash, txout_to_key, txout_to_tagged_key> txout_target_v;
   typedef boost::variant<txout_to_script, txout_to_scripthash, txout_to_key, txout_offshore, txout_xasset, txout_haven_key, txout_haven_tagged_key> txout_xhv_target_v;
   typedef boost::variant<txout_to_script, txout_to_scripthash, txout_salvium_key, txout_salvium_tagged_key> txout_salvium_target_v;
-  typedef boost::variant<txout_to_script, txout_to_scripthash, txout_to_key, txout_to_tagged_key, txout_to_carrot_v1> txout_carrot_target_v;
+  typedef boost::variant<txout_to_script, txout_to_scripthash, txout_salvium_key, txout_salvium_tagged_key, txout_to_carrot_v1> txout_carrot_target_v;
 
   typedef boost::variant<txout_to_script, txout_to_scripthash, txout_zephyr_tagged_key> txout_stablero_target_v;
 
