@@ -1,84 +1,13 @@
 module.exports = require('bindings')('cryptoforknote.node');
 
+const SHA3    = require('sha3');
+const bignum  = require('bignum');
 const bitcoin = require('bitcoinjs-lib');
 const varuint = require('varuint-bitcoin');
-const crypto  = require('node:crypto');
+const crypto  = require('crypto');
+const fastMerkleRoot = require('merkle-lib/fastRoot');
 
 const rtm = require('./rtm');
-const MAX_UINT256 = (1n << 256n) - 1n;
-const RAVEN_BASE_DIFF = BigInt('0x00000000ff000000000000000000000000000000000000000000000000000000');
-
-function parseBigInt(value, base = 10) {
-  if (typeof value === 'bigint') return value;
-  if (typeof value === 'number') return BigInt(value);
-  if (value && typeof value === 'object' && typeof value.value === 'bigint') return value.value;
-
-  const normalized = String(value).trim();
-  if (base === 16 && !normalized.startsWith('0x')) {
-    return BigInt(`0x${normalized}`);
-  }
-
-  return BigInt(normalized);
-}
-
-function createBigIntCompat(value) {
-  return {
-    value,
-    div(other) {
-      return createBigIntCompat(value / parseBigInt(other));
-    },
-    toBuffer(options = {}) {
-      if (value < 0n) {
-        throw new RangeError('toBuffer only supports unsigned values');
-      }
-
-      const endian = options.endian === 'little' ? 'little' : 'big';
-      let hex = value.toString(16);
-      if (hex.length % 2 !== 0) hex = `0${hex}`;
-
-      let buffer = hex === '' ? Buffer.alloc(0) : Buffer.from(hex, 'hex');
-      if (typeof options.size === 'number') {
-        if (buffer.length > options.size) {
-          throw new RangeError('value exceeds requested buffer size');
-        }
-
-        const padded = Buffer.alloc(options.size);
-        if (endian === 'little') {
-          buffer.copy(padded);
-        } else {
-          buffer.copy(padded, options.size - buffer.length);
-        }
-        buffer = padded;
-      } else if (endian === 'little') {
-        buffer = Buffer.from(buffer).reverse();
-      }
-
-      if (endian === 'little' && typeof options.size === 'number') {
-        return buffer;
-      }
-
-      return buffer;
-    },
-    toNumber() {
-      return Number(value.toString());
-    },
-    toString(base = 10) {
-      return value.toString(base);
-    }
-  };
-}
-
-function divideBigIntToNumber(numerator, denominator, fractionalDigits = 0) {
-  const left = parseBigInt(numerator);
-  const right = parseBigInt(denominator);
-
-  if (right <= 0n) {
-    throw new RangeError('denominator must be greater than zero');
-  }
-
-  const scale = 10n ** BigInt(fractionalDigits);
-  return Number(((left * scale) / right).toString()) / 10 ** fractionalDigits;
-}
 
 function scriptCompile(addrHash) {
   return bitcoin.script.compile([
@@ -125,25 +54,6 @@ function hash256_3(buffer) {
   return sha256_3(sha256_3(buffer));
 };
 
-function computeMerkleRoot(hashes, pairHash) {
-  if (hashes.length === 0) {
-    return Buffer.alloc(32, 0);
-  }
-
-  let level = hashes.slice();
-  while (level.length > 1) {
-    const nextLevel = [];
-    for (let i = 0; i < level.length; i += 2) {
-      const left = level[i];
-      const right = level[i + 1] || left;
-      nextLevel.push(pairHash(Buffer.concat([left, right])));
-    }
-    level = nextLevel;
-  }
-
-  return level[0];
-}
-
 function transaction_hash(transaction, forWitness) {
   if (forWitness && transaction.isCoinbase()) return Buffer.alloc(32, 0);
   return hash256(transaction.__toBuffer(undefined, undefined, forWitness));
@@ -158,7 +68,7 @@ function getMerkleRoot(transactions, transaction_hash_func, detectWitness) {
   if (transactions.length === 0) return Buffer.from('0000000000000000000000000000000000000000000000000000000000000000', 'hex')
   const forWitness = detectWitness ? txesHaveWitnessCommit(transactions) : false;
   const hashes = transactions.map(transaction => transaction_hash_func(transaction, forWitness));
-  const rootHash = computeMerkleRoot(hashes, hash256);
+  const rootHash = fastMerkleRoot(hashes, hash256);
   return forWitness ? hash256(Buffer.concat([rootHash, transactions[0].ins[0].witness[0]])) : rootHash;
 }
 
@@ -166,11 +76,11 @@ let last_epoch_number;
 let last_seed_hash;
 
 module.exports.baseDiff = function() {
-  return createBigIntCompat(MAX_UINT256);
+  return bignum('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', 16);
 };
 
 module.exports.baseRavenDiff = function() {
-  return createBigIntCompat(RAVEN_BASE_DIFF);
+  return parseInt('0x00000000ff000000000000000000000000000000000000000000000000000000');
 };
 
 module.exports.RavenBlockTemplate = function(rpcData, poolAddress) {
@@ -237,18 +147,20 @@ module.exports.RavenBlockTemplate = function(rpcData, poolAddress) {
   const EPOCH_LENGTH = 7500;
   const epoch_number = Math.floor(rpcData.height / EPOCH_LENGTH);
   if (last_epoch_number !== epoch_number) {
+    let sha3 = new SHA3.SHA3Hash(256);
     if (last_epoch_number && last_epoch_number + 1 === epoch_number) {
-      last_seed_hash = sha256_3(last_seed_hash);
+      last_seed_hash = sha3.update(last_seed_hash).digest();
     } else {
       last_seed_hash = Buffer.alloc(32, 0);
       for (let i = 0; i < epoch_number; i++) {
-        last_seed_hash = sha256_3(last_seed_hash);
+        last_seed_hash = sha3.update(last_seed_hash).digest();
+        sha3.reset();
       }
     }
     last_epoch_number = epoch_number;
   }
 
-  const difficulty = divideBigIntToNumber(module.exports.baseRavenDiff(), parseBigInt(rpcData.target, 16), 9);
+  const difficulty = parseFloat((module.exports.baseRavenDiff() / bignum(rpcData.target, 16).toNumber()).toFixed(9));
 
   return {
     blocktemplate_blob: blob.toString('hex'),
@@ -302,7 +214,7 @@ module.exports.constructNewDeroBlob = function(blockTemplate, nonceBuff) {
 };
 
 module.exports.EthBlockTemplate = function(rpcData) {
-  const difficulty = Number((parseBigInt(module.exports.baseDiff()) / parseBigInt(rpcData[2].slice(2), 16)).toString());
+  const difficulty = module.exports.baseDiff().div(bignum(rpcData[2].substr(2), 16)).toNumber();
   return {
     hash:               rpcData[0].substr(2),
     seed_hash:          rpcData[1].substr(2),
@@ -312,7 +224,7 @@ module.exports.EthBlockTemplate = function(rpcData) {
 };
 
 module.exports.ErgBlockTemplate = function(rpcData) {
-  const difficulty = Number((parseBigInt(module.exports.baseDiff()) / parseBigInt(rpcData.b)).toString());
+  const difficulty = module.exports.baseDiff().div(bignum(rpcData.b)).toNumber();
   return {
     hash:               rpcData.msg,
     hash2:              rpcData.pk,

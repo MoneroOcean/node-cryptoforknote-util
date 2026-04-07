@@ -1,27 +1,9 @@
+const bignum  = require('bignum');
+const base58  = require('base58-native');
+const bech32  = require('bech32');
 const bitcoin = require('bitcoinjs-lib');
 
-const DIFF1 = (1n << 256n) - 1n;
-
-function parseBigInt(value, base = 10) {
-  if (typeof value === 'bigint') return value;
-  if (typeof value === 'number') return BigInt(value);
-
-  const normalized = String(value).trim();
-  if (base === 16 && !normalized.startsWith('0x')) {
-    return BigInt(`0x${normalized}`);
-  }
-
-  return BigInt(normalized);
-}
-
-function divideBigIntToNumber(numerator, denominator, fractionalDigits = 0) {
-  if (denominator <= 0n) {
-    throw new RangeError('denominator must be greater than zero');
-  }
-
-  const scale = 10n ** BigInt(fractionalDigits);
-  return Number(((numerator * scale) / denominator).toString()) / 10 ** fractionalDigits;
-}
+const diff1 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
 function reverseBuffer(buff) {
   let reversed = Buffer.alloc(buff.length);
@@ -167,7 +149,17 @@ function getTransactionBuffers(txs) {
 }
 
 function addressToScript(addr) {
-  return bitcoin.address.toOutputScript(addr);
+  let decoded;
+  try {
+    decoded = base58.decode(addr);
+  } catch(err) {}
+  if (!decoded || decoded.length != 25) {
+    const decoded2 = Buffer.from(bech32.bech32.fromWords(bech32.bech32.decode(addr).words.slice(1)));
+    if (decoded2.length != 20) throw new Error('Invalid address ' + addr);
+    return Buffer.concat([Buffer.from([0x0, 0x14]), decoded2]);
+  }
+  const pubkey = decoded.slice(1, -4);
+  return Buffer.concat([Buffer.from([0x76, 0xa9, 0x14]), pubkey, Buffer.from([0x88, 0xac])]);
 }
 
 function createTransactionOutput(amount, payee, rewardToPool, reward, txOutputBuffers, payeeScript) {
@@ -305,7 +297,7 @@ module.exports.RtmBlockTemplate = function(rpcData, poolAddress) {
   const txn = varIntBuffer(txs.length + 1);
 
   return {
-    difficulty:         divideBigIntToNumber(DIFF1, parseBigInt(rpcData.target, 16), 9),
+    difficulty:         parseFloat((diff1 / bignum(rpcData.target, 16).toNumber()).toFixed(9)),
     height:             rpcData.height,
     prev_hash:          prev_hash,
     blocktemplate_blob: version + prev_hash + Buffer.alloc(32, 0).toString('hex') + curtime + bits.toString('hex') + Buffer.alloc(4, 0).toString('hex') +

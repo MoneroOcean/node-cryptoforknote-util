@@ -3,7 +3,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const cryptoforknote = require("../build/Release/cryptoforknote");
-const cryptoforknoteJs = require("../index.js");
 
 const cases = [
   {
@@ -101,18 +100,3 @@ for (const testCase of cases) {
     assert.strictEqual(actual, testCase.expected);
   });
 }
-
-test("baseDiff compat wrapper encodes buffers like the legacy bignum API", () => {
-  const single = cryptoforknoteJs.baseDiff().div(cryptoforknoteJs.baseDiff());
-  assert.deepStrictEqual(single.toBuffer(), Buffer.from("01", "hex"));
-  assert.deepStrictEqual(single.toBuffer({ size: 4 }), Buffer.from("00000001", "hex"));
-  assert.deepStrictEqual(single.toBuffer({ endian: "little", size: 4 }), Buffer.from("01000000", "hex"));
-});
-
-test("baseDiff compat wrapper keeps toBuffer after numeric division", () => {
-  const target = cryptoforknoteJs.baseDiff().div(1000);
-  const encoded = target.toBuffer({ endian: "little", size: 32 });
-
-  assert.strictEqual(Buffer.isBuffer(encoded), true);
-  assert.strictEqual(encoded.length, 32);
-});
