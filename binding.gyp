@@ -24,7 +24,6 @@
             ],
             "link_settings": {
                 "libraries": [
-                    "-lboost_system",
                     "-lboost_date_time",
                 ]
             },

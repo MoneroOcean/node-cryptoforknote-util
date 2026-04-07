@@ -9,6 +9,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <boost/mpl/bool.hpp>
 #include <boost/type_traits/is_integral.hpp>
 #include <boost/type_traits/integral_constant.hpp>
 
