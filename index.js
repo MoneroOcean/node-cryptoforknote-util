@@ -3,7 +3,6 @@ module.exports = require('bindings')('cryptoforknote.node');
 const bitcoin = require('bitcoinjs-lib');
 const varuint = require('varuint-bitcoin');
 const crypto  = require('node:crypto');
-const fastMerkleRoot = require('merkle-lib/fastRoot');
 
 const rtm = require('./rtm');
 const MAX_UINT256 = (1n << 256n) - 1n;
@@ -27,6 +26,38 @@ function createBigIntCompat(value) {
     value,
     div(other) {
       return createBigIntCompat(value / parseBigInt(other));
+    },
+    toBuffer(options = {}) {
+      if (value < 0n) {
+        throw new RangeError('toBuffer only supports unsigned values');
+      }
+
+      const endian = options.endian === 'little' ? 'little' : 'big';
+      let hex = value.toString(16);
+      if (hex.length % 2 !== 0) hex = `0${hex}`;
+
+      let buffer = hex === '' ? Buffer.alloc(0) : Buffer.from(hex, 'hex');
+      if (typeof options.size === 'number') {
+        if (buffer.length > options.size) {
+          throw new RangeError('value exceeds requested buffer size');
+        }
+
+        const padded = Buffer.alloc(options.size);
+        if (endian === 'little') {
+          buffer.copy(padded);
+        } else {
+          buffer.copy(padded, options.size - buffer.length);
+        }
+        buffer = padded;
+      } else if (endian === 'little') {
+        buffer = Buffer.from(buffer).reverse();
+      }
+
+      if (endian === 'little' && typeof options.size === 'number') {
+        return buffer;
+      }
+
+      return buffer;
     },
     toNumber() {
       return Number(value.toString());
@@ -94,6 +125,25 @@ function hash256_3(buffer) {
   return sha256_3(sha256_3(buffer));
 };
 
+function computeMerkleRoot(hashes, pairHash) {
+  if (hashes.length === 0) {
+    return Buffer.alloc(32, 0);
+  }
+
+  let level = hashes.slice();
+  while (level.length > 1) {
+    const nextLevel = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const left = level[i];
+      const right = level[i + 1] || left;
+      nextLevel.push(pairHash(Buffer.concat([left, right])));
+    }
+    level = nextLevel;
+  }
+
+  return level[0];
+}
+
 function transaction_hash(transaction, forWitness) {
   if (forWitness && transaction.isCoinbase()) return Buffer.alloc(32, 0);
   return hash256(transaction.__toBuffer(undefined, undefined, forWitness));
@@ -108,7 +158,7 @@ function getMerkleRoot(transactions, transaction_hash_func, detectWitness) {
   if (transactions.length === 0) return Buffer.from('0000000000000000000000000000000000000000000000000000000000000000', 'hex')
   const forWitness = detectWitness ? txesHaveWitnessCommit(transactions) : false;
   const hashes = transactions.map(transaction => transaction_hash_func(transaction, forWitness));
-  const rootHash = fastMerkleRoot(hashes, hash256);
+  const rootHash = computeMerkleRoot(hashes, hash256);
   return forWitness ? hash256(Buffer.concat([rootHash, transactions[0].ins[0].witness[0]])) : rootHash;
 }
 
