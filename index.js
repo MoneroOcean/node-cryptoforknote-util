@@ -1,13 +1,53 @@
 module.exports = require('bindings')('cryptoforknote.node');
 
-const SHA3    = require('sha3');
-const bignum  = require('bignum');
 const bitcoin = require('bitcoinjs-lib');
 const varuint = require('varuint-bitcoin');
-const crypto  = require('crypto');
+const crypto  = require('node:crypto');
 const fastMerkleRoot = require('merkle-lib/fastRoot');
 
 const rtm = require('./rtm');
+const MAX_UINT256 = (1n << 256n) - 1n;
+const RAVEN_BASE_DIFF = BigInt('0x00000000ff000000000000000000000000000000000000000000000000000000');
+
+function parseBigInt(value, base = 10) {
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number') return BigInt(value);
+  if (value && typeof value === 'object' && typeof value.value === 'bigint') return value.value;
+
+  const normalized = String(value).trim();
+  if (base === 16 && !normalized.startsWith('0x')) {
+    return BigInt(`0x${normalized}`);
+  }
+
+  return BigInt(normalized);
+}
+
+function createBigIntCompat(value) {
+  return {
+    value,
+    div(other) {
+      return createBigIntCompat(value / parseBigInt(other));
+    },
+    toNumber() {
+      return Number(value.toString());
+    },
+    toString(base = 10) {
+      return value.toString(base);
+    }
+  };
+}
+
+function divideBigIntToNumber(numerator, denominator, fractionalDigits = 0) {
+  const left = parseBigInt(numerator);
+  const right = parseBigInt(denominator);
+
+  if (right <= 0n) {
+    throw new RangeError('denominator must be greater than zero');
+  }
+
+  const scale = 10n ** BigInt(fractionalDigits);
+  return Number(((left * scale) / right).toString()) / 10 ** fractionalDigits;
+}
 
 function scriptCompile(addrHash) {
   return bitcoin.script.compile([
@@ -76,11 +116,11 @@ let last_epoch_number;
 let last_seed_hash;
 
 module.exports.baseDiff = function() {
-  return bignum('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', 16);
+  return createBigIntCompat(MAX_UINT256);
 };
 
 module.exports.baseRavenDiff = function() {
-  return parseInt('0x00000000ff000000000000000000000000000000000000000000000000000000');
+  return createBigIntCompat(RAVEN_BASE_DIFF);
 };
 
 module.exports.RavenBlockTemplate = function(rpcData, poolAddress) {
@@ -147,20 +187,18 @@ module.exports.RavenBlockTemplate = function(rpcData, poolAddress) {
   const EPOCH_LENGTH = 7500;
   const epoch_number = Math.floor(rpcData.height / EPOCH_LENGTH);
   if (last_epoch_number !== epoch_number) {
-    let sha3 = new SHA3.SHA3Hash(256);
     if (last_epoch_number && last_epoch_number + 1 === epoch_number) {
-      last_seed_hash = sha3.update(last_seed_hash).digest();
+      last_seed_hash = sha256_3(last_seed_hash);
     } else {
       last_seed_hash = Buffer.alloc(32, 0);
       for (let i = 0; i < epoch_number; i++) {
-        last_seed_hash = sha3.update(last_seed_hash).digest();
-        sha3.reset();
+        last_seed_hash = sha256_3(last_seed_hash);
       }
     }
     last_epoch_number = epoch_number;
   }
 
-  const difficulty = parseFloat((module.exports.baseRavenDiff() / bignum(rpcData.target, 16).toNumber()).toFixed(9));
+  const difficulty = divideBigIntToNumber(module.exports.baseRavenDiff(), parseBigInt(rpcData.target, 16), 9);
 
   return {
     blocktemplate_blob: blob.toString('hex'),
@@ -214,7 +252,7 @@ module.exports.constructNewDeroBlob = function(blockTemplate, nonceBuff) {
 };
 
 module.exports.EthBlockTemplate = function(rpcData) {
-  const difficulty = module.exports.baseDiff().div(bignum(rpcData[2].substr(2), 16)).toNumber();
+  const difficulty = Number((parseBigInt(module.exports.baseDiff()) / parseBigInt(rpcData[2].slice(2), 16)).toString());
   return {
     hash:               rpcData[0].substr(2),
     seed_hash:          rpcData[1].substr(2),
@@ -224,7 +262,7 @@ module.exports.EthBlockTemplate = function(rpcData) {
 };
 
 module.exports.ErgBlockTemplate = function(rpcData) {
-  const difficulty = module.exports.baseDiff().div(bignum(rpcData.b)).toNumber();
+  const difficulty = Number((parseBigInt(module.exports.baseDiff()) / parseBigInt(rpcData.b)).toString());
   return {
     hash:               rpcData.msg,
     hash2:              rpcData.pk,

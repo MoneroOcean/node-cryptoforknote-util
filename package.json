@@ -1,9 +1,22 @@
 {
   "name": "cryptoforknote-util",
   "version": "15.8.5",
+  "description": "Native utilities for CryptoNote-family block blob handling and merged mining helpers.",
+  "main": "index.js",
   "scripts": {
     "test": "node --test --test-reporter=spec tests/test.js"
   },
+  "files": [
+    "index.js",
+    "rtm.js",
+    "binding.gyp",
+    "src"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@9.2.0",
+  "license": "MIT",
   "author": {
     "name": "LucasJones",
     "email": "lucasjonesdev@hotmail.co.uk"
@@ -13,16 +26,11 @@
     "url": "https://github.com/haven-protocol-org/node-cryptoforknote-util.git"
   },
   "dependencies": {
-    "base58-native": "*",
-    "bech32": "*",
-    "bignum": "^0.13.1",
-    "bindings": "*",
-    "bitcoinjs-lib": "git+https://github.com/MoneroOcean/bitcoinjs-lib.git",
-    "merkle-lib": "^2.0.10",
-    "nan": "^2.20.0",
-    "promise": "*",
-    "sha3": "*",
-    "varuint-bitcoin": "^1.0.4"
+    "bindings": "1.5.0",
+    "bitcoinjs-lib": "^6.1.3",
+    "merkle-lib": "2.0.10",
+    "nan": "2.26.2",
+    "varuint-bitcoin": "1.1.2"
   },
   "keywords": [
     "cryptonight",
