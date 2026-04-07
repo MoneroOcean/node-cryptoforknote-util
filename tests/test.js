@@ -108,3 +108,11 @@ test("baseDiff compat wrapper encodes buffers like the legacy bignum API", () =>
   assert.deepStrictEqual(single.toBuffer({ size: 4 }), Buffer.from("00000001", "hex"));
   assert.deepStrictEqual(single.toBuffer({ endian: "little", size: 4 }), Buffer.from("01000000", "hex"));
 });
+
+test("baseDiff compat wrapper keeps toBuffer after numeric division", () => {
+  const target = cryptoforknoteJs.baseDiff().div(1000);
+  const encoded = target.toBuffer({ endian: "little", size: 32 });
+
+  assert.strictEqual(Buffer.isBuffer(encoded), true);
+  assert.strictEqual(encoded.length, 32);
+});
