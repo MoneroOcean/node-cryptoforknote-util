@@ -1,13 +1,50 @@
 module.exports = require('bindings')('cryptoforknote.node');
 
-const SHA3    = require('sha3');
-const bignum  = require('bignum');
 const bitcoin = require('bitcoinjs-lib');
 const varuint = require('varuint-bitcoin');
 const crypto  = require('crypto');
 const fastMerkleRoot = require('merkle-lib/fastRoot');
 
 const rtm = require('./rtm');
+const MAX_UINT256 = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
+
+function parseBigInt(value, base = 10) {
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number') return BigInt(value);
+  const stringValue = String(value).trim();
+  if (base === 16) return BigInt(`0x${stringValue.replace(/^0x/i, '')}`);
+  return BigInt(stringValue);
+}
+
+function createCompatBigNum(value, base = 10) {
+  const bigint = parseBigInt(value, base);
+  return {
+    div(other) {
+      return createCompatBigNum(bigint / parseBigInt(other));
+    },
+    toNumber() {
+      return Number(bigint);
+    },
+    toString(radix = 10) {
+      return bigint.toString(radix);
+    },
+    valueOf() {
+      return Number(bigint);
+    }
+  };
+}
+
+function divideBigIntsToNumber(numerator, denominator, decimals = 0) {
+  const divisor = parseBigInt(denominator);
+  if (divisor === 0n) throw new RangeError('Division by zero');
+  if (decimals <= 0) return Number(parseBigInt(numerator) / divisor);
+
+  const scale = 10n ** BigInt(decimals);
+  const scaled = (parseBigInt(numerator) * scale) / divisor;
+  const integer = scaled / scale;
+  const fraction = (scaled % scale).toString().padStart(decimals, '0');
+  return Number(`${integer}.${fraction}`);
+}
 
 function scriptCompile(addrHash) {
   return bitcoin.script.compile([
@@ -76,7 +113,7 @@ let last_epoch_number;
 let last_seed_hash;
 
 module.exports.baseDiff = function() {
-  return bignum('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', 16);
+  return createCompatBigNum(MAX_UINT256);
 };
 
 module.exports.baseRavenDiff = function() {
@@ -147,20 +184,18 @@ module.exports.RavenBlockTemplate = function(rpcData, poolAddress) {
   const EPOCH_LENGTH = 7500;
   const epoch_number = Math.floor(rpcData.height / EPOCH_LENGTH);
   if (last_epoch_number !== epoch_number) {
-    let sha3 = new SHA3.SHA3Hash(256);
     if (last_epoch_number && last_epoch_number + 1 === epoch_number) {
-      last_seed_hash = sha3.update(last_seed_hash).digest();
+      last_seed_hash = sha256_3(last_seed_hash);
     } else {
       last_seed_hash = Buffer.alloc(32, 0);
       for (let i = 0; i < epoch_number; i++) {
-        last_seed_hash = sha3.update(last_seed_hash).digest();
-        sha3.reset();
+        last_seed_hash = sha256_3(last_seed_hash);
       }
     }
     last_epoch_number = epoch_number;
   }
 
-  const difficulty = parseFloat((module.exports.baseRavenDiff() / bignum(rpcData.target, 16).toNumber()).toFixed(9));
+  const difficulty = divideBigIntsToNumber(BigInt(module.exports.baseRavenDiff()), parseBigInt(rpcData.target, 16), 9);
 
   return {
     blocktemplate_blob: blob.toString('hex'),
@@ -214,7 +249,7 @@ module.exports.constructNewDeroBlob = function(blockTemplate, nonceBuff) {
 };
 
 module.exports.EthBlockTemplate = function(rpcData) {
-  const difficulty = module.exports.baseDiff().div(bignum(rpcData[2].substr(2), 16)).toNumber();
+  const difficulty = divideBigIntsToNumber(MAX_UINT256, parseBigInt(rpcData[2].substr(2), 16));
   return {
     hash:               rpcData[0].substr(2),
     seed_hash:          rpcData[1].substr(2),
@@ -224,7 +259,7 @@ module.exports.EthBlockTemplate = function(rpcData) {
 };
 
 module.exports.ErgBlockTemplate = function(rpcData) {
-  const difficulty = module.exports.baseDiff().div(bignum(rpcData.b)).toNumber();
+  const difficulty = divideBigIntsToNumber(MAX_UINT256, parseBigInt(rpcData.b));
   return {
     hash:               rpcData.msg,
     hash2:              rpcData.pk,

@@ -5,7 +5,7 @@ Installing locally and testing
 -----
 ```
 JOBS=$(nproc) npm install https://github.com/MoneroOcean/node-cryptoforknote-util
-node_modules/cryptoforknote-util/tests/run.sh
+npm test
 ```
 
 Dependencies

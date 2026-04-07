@@ -1,9 +1,26 @@
-const bignum  = require('bignum');
-const base58  = require('base58-native');
-const bech32  = require('bech32');
 const bitcoin = require('bitcoinjs-lib');
 
-const diff1 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+const diff1 = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
+
+function parseBigInt(value, base = 10) {
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number') return BigInt(value);
+  const stringValue = String(value).trim();
+  if (base === 16) return BigInt(`0x${stringValue.replace(/^0x/i, '')}`);
+  return BigInt(stringValue);
+}
+
+function divideBigIntsToNumber(numerator, denominator, decimals = 0) {
+  const divisor = parseBigInt(denominator);
+  if (divisor === 0n) throw new RangeError('Division by zero');
+  if (decimals <= 0) return Number(parseBigInt(numerator) / divisor);
+
+  const scale = 10n ** BigInt(decimals);
+  const scaled = (parseBigInt(numerator) * scale) / divisor;
+  const integer = scaled / scale;
+  const fraction = (scaled % scale).toString().padStart(decimals, '0');
+  return Number(`${integer}.${fraction}`);
+}
 
 function reverseBuffer(buff) {
   let reversed = Buffer.alloc(buff.length);
@@ -149,17 +166,23 @@ function getTransactionBuffers(txs) {
 }
 
 function addressToScript(addr) {
-  let decoded;
   try {
-    decoded = base58.decode(addr);
-  } catch(err) {}
-  if (!decoded || decoded.length != 25) {
-    const decoded2 = Buffer.from(bech32.bech32.fromWords(bech32.bech32.decode(addr).words.slice(1)));
-    if (decoded2.length != 20) throw new Error('Invalid address ' + addr);
-    return Buffer.concat([Buffer.from([0x0, 0x14]), decoded2]);
+    const decoded = bitcoin.address.fromBase58Check(addr);
+    return bitcoin.script.compile([
+      bitcoin.opcodes.OP_DUP,
+      bitcoin.opcodes.OP_HASH160,
+      decoded.hash,
+      bitcoin.opcodes.OP_EQUALVERIFY,
+      bitcoin.opcodes.OP_CHECKSIG
+    ]);
+  } catch (base58Error) {
+    const decoded = bitcoin.address.fromBech32(addr);
+    if (decoded.data.length !== 20) throw new Error('Invalid address ' + addr);
+    return bitcoin.script.compile([
+      decoded.version,
+      decoded.data
+    ]);
   }
-  const pubkey = decoded.slice(1, -4);
-  return Buffer.concat([Buffer.from([0x76, 0xa9, 0x14]), pubkey, Buffer.from([0x88, 0xac])]);
 }
 
 function createTransactionOutput(amount, payee, rewardToPool, reward, txOutputBuffers, payeeScript) {
@@ -297,7 +320,7 @@ module.exports.RtmBlockTemplate = function(rpcData, poolAddress) {
   const txn = varIntBuffer(txs.length + 1);
 
   return {
-    difficulty:         parseFloat((diff1 / bignum(rpcData.target, 16).toNumber()).toFixed(9)),
+    difficulty:         divideBigIntsToNumber(diff1, parseBigInt(rpcData.target, 16), 9),
     height:             rpcData.height,
     prev_hash:          prev_hash,
     blocktemplate_blob: version + prev_hash + Buffer.alloc(32, 0).toString('hex') + curtime + bits.toString('hex') + Buffer.alloc(4, 0).toString('hex') +

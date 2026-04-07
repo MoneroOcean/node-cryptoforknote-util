@@ -1,6 +1,20 @@
 {
   "name": "cryptoforknote-util",
-  "version": "15.8.5",
+  "version": "15.8.6",
+  "main": "index.js",
+  "files": [
+    "binding.gyp",
+    "index.js",
+    "rtm.js",
+    "src"
+  ],
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "test": "node --test --test-reporter=spec tests/test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "author": {
     "name": "LucasJones",
     "email": "lucasjonesdev@hotmail.co.uk"
@@ -10,16 +24,11 @@
     "url": "https://github.com/haven-protocol-org/node-cryptoforknote-util.git"
   },
   "dependencies": {
-    "base58-native": "*",
-    "bech32": "*",
-    "bignum": "^0.13.1",
-    "bindings": "*",
-    "bitcoinjs-lib": "git+https://github.com/MoneroOcean/bitcoinjs-lib.git",
-    "merkle-lib": "^2.0.10",
-    "nan": "^2.20.0",
-    "promise": "*",
-    "sha3": "*",
-    "varuint-bitcoin": "^1.0.4"
+    "bindings": "1.5.0",
+    "bitcoinjs-lib": "git+https://github.com/MoneroOcean/bitcoinjs-lib.git#6baf70ab6b5fd39060335a7610eca14f34a535f7",
+    "merkle-lib": "2.0.10",
+    "nan": "2.26.2",
+    "varuint-bitcoin": "1.1.2"
   },
   "keywords": [
     "cryptonight",
