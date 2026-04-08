@@ -1,7 +1,8 @@
-const bignum  = require('bignum');
 const base58  = require('base58-native');
 const bech32  = require('bech32');
 const bitcoin = require('bitcoinjs-lib');
+
+const { parseBigInt } = require('./bigint');
 
 const diff1 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
@@ -297,7 +298,7 @@ module.exports.RtmBlockTemplate = function(rpcData, poolAddress) {
   const txn = varIntBuffer(txs.length + 1);
 
   return {
-    difficulty:         parseFloat((diff1 / bignum(rpcData.target, 16).toNumber()).toFixed(9)),
+    difficulty:         parseFloat((diff1 / Number(parseBigInt(rpcData.target, 16))).toFixed(9)),
     height:             rpcData.height,
     prev_hash:          prev_hash,
     blocktemplate_blob: version + prev_hash + Buffer.alloc(32, 0).toString('hex') + curtime + bits.toString('hex') + Buffer.alloc(4, 0).toString('hex') +
