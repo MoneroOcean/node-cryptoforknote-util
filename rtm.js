@@ -1,10 +1,12 @@
-const base58  = require('base58-native');
 const bech32  = require('bech32');
 const bitcoin = require('bitcoinjs-lib');
+const crypto = require('crypto');
 
 const { parseBigInt } = require('./bigint');
 
 const diff1 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const BASE58_INDEXES = new Map(Array.from(BASE58_ALPHABET, (char, index) => [char, index]));
 
 function reverseBuffer(buff) {
   let reversed = Buffer.alloc(buff.length);
@@ -149,10 +151,38 @@ function getTransactionBuffers(txs) {
   return [null].concat(txHashes);
 }
 
+function sha256(buffer) {
+  return crypto.createHash('sha256').update(buffer).digest();
+}
+
+function decodeBase58Check(value) {
+  let num = 0n;
+  for (const char of value) {
+    const index = BASE58_INDEXES.get(char);
+    if (index === undefined) throw new Error('Invalid base58 character');
+    num = (num * 58n) + BigInt(index);
+  }
+
+  let hex = num.toString(16);
+  if (hex.length % 2 !== 0) hex = '0' + hex;
+  let decoded = hex === '00' ? Buffer.alloc(0) : Buffer.from(hex, 'hex');
+
+  let leadingZeros = 0;
+  while (leadingZeros < value.length && value[leadingZeros] === '1') leadingZeros++;
+  if (leadingZeros > 0) decoded = Buffer.concat([Buffer.alloc(leadingZeros), decoded]);
+
+  if (decoded.length < 5) throw new Error('Invalid base58check payload');
+  const payload = decoded.subarray(0, -4);
+  const checksum = decoded.subarray(-4);
+  const expectedChecksum = sha256(sha256(payload)).subarray(0, 4);
+  if (!crypto.timingSafeEqual(checksum, expectedChecksum)) throw new Error('Invalid base58check checksum');
+  return decoded;
+}
+
 function addressToScript(addr) {
   let decoded;
   try {
-    decoded = base58.decode(addr);
+    decoded = decodeBase58Check(addr);
   } catch(err) {}
   if (!decoded || decoded.length != 25) {
     const decoded2 = Buffer.from(bech32.bech32.fromWords(bech32.bech32.decode(addr).words.slice(1)));
