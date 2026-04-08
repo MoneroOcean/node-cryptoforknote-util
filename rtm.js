@@ -1,21 +1,9 @@
+const bignum  = require('bignum');
 const base58  = require('base58-native');
 const bech32  = require('bech32');
 const bitcoin = require('bitcoinjs-lib');
 
-const diff1 = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
-const DIFF_PRECISION = 1000000000n;
-
-function parseBigInt(value, base) {
-  if (typeof value === 'bigint') return value;
-  if (typeof value === 'number') return BigInt(Math.trunc(value));
-  if (Buffer.isBuffer(value)) return BigInt(`0x${value.toString('hex') || '00'}`);
-  if (typeof value === 'string') return BigInt(base === 16 ? `0x${value}` : value);
-  return BigInt(value || 0);
-}
-
-function difficultyToFloat(base, target) {
-  return Number((base * DIFF_PRECISION) / target) / Number(DIFF_PRECISION);
-}
+const diff1 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
 function reverseBuffer(buff) {
   let reversed = Buffer.alloc(buff.length);
@@ -309,7 +297,7 @@ module.exports.RtmBlockTemplate = function(rpcData, poolAddress) {
   const txn = varIntBuffer(txs.length + 1);
 
   return {
-    difficulty:         difficultyToFloat(diff1, parseBigInt(rpcData.target, 16)),
+    difficulty:         parseFloat((diff1 / bignum(rpcData.target, 16).toNumber()).toFixed(9)),
     height:             rpcData.height,
     prev_hash:          prev_hash,
     blocktemplate_blob: version + prev_hash + Buffer.alloc(32, 0).toString('hex') + curtime + bits.toString('hex') + Buffer.alloc(4, 0).toString('hex') +

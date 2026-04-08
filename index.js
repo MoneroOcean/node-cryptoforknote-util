@@ -1,6 +1,7 @@
 module.exports = require('bindings')('cryptoforknote.node');
 
 const SHA3    = require('sha3');
+const bignum  = require('bignum');
 const bitcoin = require('bitcoinjs-lib');
 const varuint = require('varuint-bitcoin');
 const crypto  = require('crypto');
@@ -74,36 +75,12 @@ function getMerkleRoot(transactions, transaction_hash_func, detectWitness) {
 let last_epoch_number;
 let last_seed_hash;
 
-const BASE_DIFF = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
-const BASE_RAVEN_DIFF = BigInt('0x00000000ff000000000000000000000000000000000000000000000000000000');
-const DIFF_PRECISION = 1000000000n;
-
-function parseBigInt(value, base) {
-  if (typeof value === 'bigint') return value;
-  if (typeof value === 'number') return BigInt(Math.trunc(value));
-  if (Buffer.isBuffer(value)) return BigInt(`0x${value.toString('hex') || '00'}`);
-  if (typeof value === 'string') return BigInt(base === 16 ? `0x${value}` : value);
-  return BigInt(value || 0);
-}
-
-function difficultyToFloat(base, target) {
-  return Number((base * DIFF_PRECISION) / target) / Number(DIFF_PRECISION);
-}
-
 module.exports.baseDiff = function() {
-  return {
-    div(other) {
-      return {
-        toNumber() {
-          return Number(BASE_DIFF / parseBigInt(other));
-        }
-      };
-    }
-  };
+  return bignum('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', 16);
 };
 
 module.exports.baseRavenDiff = function() {
-  return BASE_RAVEN_DIFF;
+  return parseInt('0x00000000ff000000000000000000000000000000000000000000000000000000');
 };
 
 module.exports.RavenBlockTemplate = function(rpcData, poolAddress) {
@@ -183,7 +160,7 @@ module.exports.RavenBlockTemplate = function(rpcData, poolAddress) {
     last_epoch_number = epoch_number;
   }
 
-  const difficulty = difficultyToFloat(module.exports.baseRavenDiff(), parseBigInt(rpcData.target, 16));
+  const difficulty = parseFloat((module.exports.baseRavenDiff() / bignum(rpcData.target, 16).toNumber()).toFixed(9));
 
   return {
     blocktemplate_blob: blob.toString('hex'),
@@ -237,7 +214,7 @@ module.exports.constructNewDeroBlob = function(blockTemplate, nonceBuff) {
 };
 
 module.exports.EthBlockTemplate = function(rpcData) {
-  const difficulty = module.exports.baseDiff().div(parseBigInt(rpcData[2].substr(2), 16)).toNumber();
+  const difficulty = module.exports.baseDiff().div(bignum(rpcData[2].substr(2), 16)).toNumber();
   return {
     hash:               rpcData[0].substr(2),
     seed_hash:          rpcData[1].substr(2),
@@ -247,7 +224,7 @@ module.exports.EthBlockTemplate = function(rpcData) {
 };
 
 module.exports.ErgBlockTemplate = function(rpcData) {
-  const difficulty = module.exports.baseDiff().div(parseBigInt(rpcData.b)).toNumber();
+  const difficulty = module.exports.baseDiff().div(bignum(rpcData.b)).toNumber();
   return {
     hash:               rpcData.msg,
     hash2:              rpcData.pk,

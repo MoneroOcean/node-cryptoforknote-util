@@ -15,6 +15,7 @@
   "dependencies": {
     "base58-native": "*",
     "bech32": "*",
+    "bignum": "^0.13.1",
     "bindings": "*",
     "bitcoinjs-lib": "git+https://github.com/MoneroOcean/bitcoinjs-lib.git",
     "merkle-lib": "^2.0.10",
