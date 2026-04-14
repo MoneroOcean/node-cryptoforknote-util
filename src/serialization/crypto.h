@@ -65,3 +65,4 @@ BLOB_SERIALIZER(crypto::signature);
 BLOB_SERIALIZER(crypto::view_tag);
 BLOB_SERIALIZER(carrot::view_tag_t);
 BLOB_SERIALIZER(carrot::janus_anchor_t);
+BLOB_SERIALIZER(carrot::rollup_binding_tag_t);

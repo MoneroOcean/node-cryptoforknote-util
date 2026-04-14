@@ -41,7 +41,9 @@ namespace cryptonote
     STAKE = 6,
     RETURN = 7,
     AUDIT = 8,
-    MAX = 8
+    CREATE_TOKEN = 9,
+    ROLLUP = 10,
+    MAX = 10
   };
 }
 

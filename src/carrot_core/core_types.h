@@ -101,4 +101,15 @@ struct encrypted_return_pubkey_t final
     unsigned char bytes[ENCRYPTED_RETURN_PUBKEY_BYTES];
 };
 
+/// Salvium rollup binding tag
+constexpr std::size_t ROLLUP_BINDING_TAG_BYTES{8};
+struct rollup_binding_tag_t final
+{
+    unsigned char bytes[ROLLUP_BINDING_TAG_BYTES];
+};
+
+/// overloaded operators: rollup binding tag
+bool operator==(const rollup_binding_tag_t &a, const rollup_binding_tag_t &b);
+static inline bool operator!=(const rollup_binding_tag_t &a, const rollup_binding_tag_t &b) { return !(a == b); }
+
 } //namespace carrot

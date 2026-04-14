@@ -1,6 +1,9 @@
 {
   "name": "cryptoforknote-util",
-  "version": "15.8.4",
+  "version": "15.8.4-s",
+  "scripts": {
+    "test": "bash tests/run.sh"
+  },
   "author": {
     "name": "LucasJones",
     "email": "lucasjonesdev@hotmail.co.uk"
