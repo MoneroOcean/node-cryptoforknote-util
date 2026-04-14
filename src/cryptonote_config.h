@@ -11,6 +11,7 @@
 #define HF_VERSION_ENABLE_N_OUTS         2
 #define TRANSACTION_VERSION_N_OUTS       3
 #define TRANSACTION_VERSION_CARROT       4
+#define TRANSACTION_VERSION_ENABLE_TOKENS 5
 
 // UNLOCK TIMES
 #define TX_V6_OFFSHORE_UNLOCK_BLOCKS                    21*720  // 21 day unlock time

@@ -1,6 +1,6 @@
 {
   "name": "cryptoforknote-util",
-  "version": "v15.8.8",
+  "version": "v15.8.9",
   "description": "Native utilities for Cryptonote-family block template and blob handling",
   "main": "index.js",
   "gypfile": true,
