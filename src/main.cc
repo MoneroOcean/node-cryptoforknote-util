@@ -14,9 +14,26 @@
 
 #define THROW_ERROR_EXCEPTION(x) Nan::ThrowError(x)
 
-using namespace node;
 using namespace v8;
 using namespace cryptonote;
+namespace Buffer = node::Buffer;
+
+namespace {
+
+inline Local<String> NewString(Isolate* isolate, const char* value) {
+    return String::NewFromUtf8(isolate, value).ToLocalChecked();
+}
+
+inline void SetExport(Isolate* isolate, Local<Object> target, const char* name,
+                      FunctionCallback callback) {
+    target->Set(
+        isolate->GetCurrentContext(),
+        NewString(isolate, name),
+        Function::New(isolate->GetCurrentContext(), callback).ToLocalChecked()
+    ).Check();
+}
+
+}  // namespace
 
 // cryptonote::append_mm_tag_to_extra writes byte with TX_EXTRA_MERGE_MINING_TAG (1 here) and VARINT DEPTH (2 here)
 const size_t MM_NONCE_SIZE = 1 + 2 + sizeof(crypto::hash);
@@ -128,7 +145,7 @@ static bool construct_parent_block(const cryptonote::block& b, cryptonote::block
     return fillExtra(parent_block, b);
 }
 
-NAN_METHOD(convert_blob) { // (parentBlockBuffer, cnBlobType)
+void convert_blob(const FunctionCallbackInfo<Value>& info) { // (parentBlockBuffer, cnBlobType)
     if (info.Length() < 1) return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
@@ -160,7 +177,7 @@ NAN_METHOD(convert_blob) { // (parentBlockBuffer, cnBlobType)
     info.GetReturnValue().Set(returnValue);
 }
 
-NAN_METHOD(get_block_id) {
+void get_block_id(const FunctionCallbackInfo<Value>& info) {
     if (info.Length() < 1) return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
@@ -187,7 +204,7 @@ NAN_METHOD(get_block_id) {
     info.GetReturnValue().Set(returnValue);
 }
 
-NAN_METHOD(construct_block_blob) { // (parentBlockTemplateBuffer, nonceBuffer, cnBlobType)
+void construct_block_blob(const FunctionCallbackInfo<Value>& info) { // (parentBlockTemplateBuffer, nonceBuffer, cnBlobType)
     if (info.Length() < 2) return THROW_ERROR_EXCEPTION("You must provide two arguments.");
 
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
@@ -244,7 +261,7 @@ NAN_METHOD(construct_block_blob) { // (parentBlockTemplateBuffer, nonceBuffer, c
     info.GetReturnValue().Set(returnValue);
 }
 
-NAN_METHOD(address_decode) {
+void address_decode(const FunctionCallbackInfo<Value>& info) {
     if (info.Length() < 1) return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
@@ -275,7 +292,7 @@ NAN_METHOD(address_decode) {
     }
 }
 
-NAN_METHOD(address_decode_integrated) {
+void address_decode_integrated(const FunctionCallbackInfo<Value>& info) {
     if (info.Length() < 1) return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
@@ -306,12 +323,12 @@ NAN_METHOD(address_decode_integrated) {
     }
 }
 
-NAN_METHOD(get_merged_mining_nonce_size) {
+void get_merged_mining_nonce_size(const FunctionCallbackInfo<Value>& info) {
     Local<Integer> returnValue = Nan::New(static_cast<uint32_t>(MM_NONCE_SIZE));
     info.GetReturnValue().Set(returnValue);
 }
 
-NAN_METHOD(construct_mm_parent_block_blob) { // (parentBlockTemplate, blob_type, childBlockTemplate)
+void construct_mm_parent_block_blob(const FunctionCallbackInfo<Value>& info) { // (parentBlockTemplate, blob_type, childBlockTemplate)
     if (info.Length() < 3) return THROW_ERROR_EXCEPTION("You must provide three arguments (parentBlock, blob_type, childBlock).");
 
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
@@ -349,7 +366,7 @@ NAN_METHOD(construct_mm_parent_block_blob) { // (parentBlockTemplate, blob_type,
     info.GetReturnValue().Set(returnValue);
 }
 
-NAN_METHOD(construct_mm_child_block_blob) { // (shareBuffer, blob_type, childBlockTemplate)
+void construct_mm_child_block_blob(const FunctionCallbackInfo<Value>& info) { // (shareBuffer, blob_type, childBlockTemplate)
     if (info.Length() < 3) return THROW_ERROR_EXCEPTION("You must provide three arguments (shareBuffer, blob_type, block2).");
 
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
@@ -382,16 +399,16 @@ NAN_METHOD(construct_mm_child_block_blob) { // (shareBuffer, blob_type, childBlo
     info.GetReturnValue().Set(returnValue);
 }
 
-NAN_MODULE_INIT(init) {
-    Nan::Set(target, Nan::New("construct_block_blob").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(construct_block_blob)).ToLocalChecked());
-    Nan::Set(target, Nan::New("get_block_id").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(get_block_id)).ToLocalChecked());
-    Nan::Set(target, Nan::New("convert_blob").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(convert_blob)).ToLocalChecked());
-    Nan::Set(target, Nan::New("address_decode").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(address_decode)).ToLocalChecked());
-    Nan::Set(target, Nan::New("address_decode_integrated").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(address_decode_integrated)).ToLocalChecked());
-
-    Nan::Set(target, Nan::New("get_merged_mining_nonce_size").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(get_merged_mining_nonce_size)).ToLocalChecked());
-    Nan::Set(target, Nan::New("construct_mm_parent_block_blob").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(construct_mm_parent_block_blob)).ToLocalChecked());
-    Nan::Set(target, Nan::New("construct_mm_child_block_blob").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(construct_mm_child_block_blob)).ToLocalChecked());
+void init(Local<Object> exports, Local<Value>, Local<Context> context, void*) {
+    Isolate* isolate = context->GetIsolate();
+    SetExport(isolate, exports, "construct_block_blob", construct_block_blob);
+    SetExport(isolate, exports, "get_block_id", get_block_id);
+    SetExport(isolate, exports, "convert_blob", convert_blob);
+    SetExport(isolate, exports, "address_decode", address_decode);
+    SetExport(isolate, exports, "address_decode_integrated", address_decode_integrated);
+    SetExport(isolate, exports, "get_merged_mining_nonce_size", get_merged_mining_nonce_size);
+    SetExport(isolate, exports, "construct_mm_parent_block_blob", construct_mm_parent_block_blob);
+    SetExport(isolate, exports, "construct_mm_child_block_blob", construct_mm_child_block_blob);
 }
 
-NODE_MODULE(cryptoforknote, init)
+NODE_MODULE_CONTEXT_AWARE(cryptoforknote, init)
