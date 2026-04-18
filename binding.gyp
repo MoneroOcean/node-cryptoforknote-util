@@ -20,7 +20,6 @@
                 "src",
                 "src/contrib/epee/include",
                 "/usr/local/opt/boost/include",
-                "<!(node -e \"require('nan')\")",
             ],
             "link_settings": {
                 "libraries": [

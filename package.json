@@ -1,6 +1,6 @@
 {
   "name": "cryptoforknote-util",
-  "version": "v15.8.10",
+  "version": "v15.8.11",
   "description": "Native utilities for Cryptonote-family block template and blob handling",
   "main": "index.js",
   "gypfile": true,
@@ -34,7 +34,6 @@
     "bindings": "1.5.0",
     "bitcoinjs-lib": "git+https://github.com/MoneroOcean/bitcoinjs-lib.git",
     "merkle-lib": "2.0.10",
-    "nan": "2.26.2",
     "sha3": "2.1.4",
     "varuint-bitcoin": "1.1.2"
   },
