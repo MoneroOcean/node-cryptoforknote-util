@@ -81,7 +81,6 @@ namespace misc_utils
 	// TEMPLATE STRUCT less
 	template<class _Ty>
 	struct less_as_pod
-		: public std::binary_function<_Ty, _Ty, bool>
 	{	// functor for operator<
 		bool operator()(const _Ty& _Left, const _Ty& _Right) const
 		{	// apply operator< to operands
