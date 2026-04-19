@@ -104,14 +104,14 @@ This repository is a utility layer for pool software and infrastructure. It is n
 GitHub Actions runs the fast suite only, on Linux and macOS, with the same small Node matrix shape used by `node-pow-hashing`: Node 18, Node 24, and the runner's system Node where useful.
 
 ## Contributors
-1. [MoneroOcean](https://github.com/MoneroOcean) for the long-running maintenance branch, multi-chain pool support, and most of the current repository direction (`354` commits across recorded identities)
-2. Lucas Jones / `lucas` for the original addon and early block/blob plumbing that the project still builds on (`10`)
-3. `clintar` for early follow-up maintenance and project evolution (`10`)
-4. `CliffordST` for utility and chain-support updates in the repository history (`8`)
-5. `campurro` / `Campurro` for continued maintenance and fixes (`5`)
-6. `Some Random Crypto Guy` for support and maintenance work in the current-era history (`5`)
-7. `wallet42` for feature and upkeep contributions (`5`)
-8. `Neil Coggins` for maintenance and fix-up work (`5`)
-9. [ZephyrProtocol](https://github.com/ZephyrProtocol) for Zephyr-specific support in the repo history (`3`)
-10. `xmvdev` for MoneroV-related support in the repository history (`3`)
-11. `Ghost-ai-cpu` for follow-up maintenance contributions (`2`)
+1. [MoneroOcean](https://github.com/MoneroOcean) for the long-running maintenance branch, multi-chain pool support, and most of the current repository direction
+2. Lucas Jones / `lucas` for the original addon and early block/blob plumbing that the project still builds on
+3. `clintar` for early follow-up maintenance and project evolution
+4. `CliffordST` for utility and chain-support updates in the repository history
+5. `campurro` / `Campurro` for continued maintenance and fixes
+6. `Some Random Crypto Guy` for support and maintenance work in the current-era history
+7. `wallet42` for feature and upkeep contributions
+8. `Neil Coggins` for maintenance and fix-up work
+9. [ZephyrProtocol](https://github.com/ZephyrProtocol) for Zephyr-specific support in the repo history
+10. `xmvdev` for MoneroV-related support in the repository history
+11. `Ghost-ai-cpu` for follow-up maintenance contributions

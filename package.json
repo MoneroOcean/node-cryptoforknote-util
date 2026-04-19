@@ -1,6 +1,6 @@
 {
   "name": "node-blocktemplate",
-  "version": "v15.8.13",
+  "version": "v15.8.14",
   "description": "Native utilities for multichain block template and blob handling",
   "main": "index.js",
   "gypfile": true,
