@@ -1,6 +1,6 @@
 {
   "name": "cryptoforknote-util",
-  "version": "v15.8.11",
+  "version": "v15.8.12",
   "description": "Native utilities for Cryptonote-family block template and blob handling",
   "main": "index.js",
   "gypfile": true,
@@ -15,7 +15,7 @@
     "test": "node --test --test-reporter=spec tests/test.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   },
   "author": {
     "name": "LucasJones",
