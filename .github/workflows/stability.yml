@@ -51,14 +51,14 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update
-          sudo apt-get install -y libboost-date-time-dev
+          sudo apt-get install -y libboost-date-time-dev libsodium-dev
 
       - name: Install macOS build dependencies
         if: startsWith(matrix.os, 'macos')
         run: |
-          brew install boost
-          echo "CPATH=$(brew --prefix boost)/include" >> "$GITHUB_ENV"
-          echo "LIBRARY_PATH=$(brew --prefix boost)/lib" >> "$GITHUB_ENV"
+          brew install boost libsodium
+          echo "CPATH=$(brew --prefix boost)/include:$(brew --prefix libsodium)/include" >> "$GITHUB_ENV"
+          echo "LIBRARY_PATH=$(brew --prefix boost)/lib:$(brew --prefix libsodium)/lib" >> "$GITHUB_ENV"
 
       - name: Show Node.js version
         run: node -v

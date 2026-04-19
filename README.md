@@ -36,7 +36,7 @@ npm test
 > - Node.js `>=18`
 > - Linux and macOS are the intended CI platforms
 > - The addon builds locally with `node-gyp`, so you need Python 3, `make`, and a working C/C++ toolchain
-> - Boost headers and `boost_date_time` are required
+> - Boost headers, `boost_date_time`, and `libsodium` headers are required
 > - Non-ARM builds use `-march=native`, so build on the target CPU class or inside a compatible build image
 > - No prebuilt binaries are shipped in this repository
 
