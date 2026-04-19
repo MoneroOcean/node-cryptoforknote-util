@@ -409,4 +409,4 @@ void init(Local<Object> exports, Local<Value>, Local<Context> context, void*) {
     SetExport(isolate, exports, "construct_mm_child_block_blob", construct_mm_child_block_blob);
 }
 
-NODE_MODULE_CONTEXT_AWARE(cryptoforknote, init)
+NODE_MODULE_CONTEXT_AWARE(blocktemplate, init)

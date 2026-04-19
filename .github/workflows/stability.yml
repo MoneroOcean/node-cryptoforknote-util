@@ -1,0 +1,70 @@
+name: Stability
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stability-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            node: 18
+          - os: ubuntu-24.04
+            node: 24
+          - os: ubuntu-latest
+            node: system
+          - os: ubuntu-latest
+            node: 24
+          - os: macos-latest
+            node: system
+          - os: macos-latest
+            node: 24
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        if: matrix.node != 'system'
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+
+      - name: Install Linux build dependencies
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libboost-date-time-dev
+
+      - name: Install macOS build dependencies
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          brew install boost
+          echo "CPATH=$(brew --prefix boost)/include" >> "$GITHUB_ENV"
+          echo "LIBRARY_PATH=$(brew --prefix boost)/lib" >> "$GITHUB_ENV"
+
+      - name: Show Node.js version
+        run: node -v
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --no-package-lock
+
+      - name: Run fast stability suite
+        run: npm test

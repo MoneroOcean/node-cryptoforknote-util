@@ -1,7 +1,7 @@
 {
     "targets": [
         {
-            "target_name": "cryptoforknote",
+            "target_name": "blocktemplate",
             "sources": [
                 "src/main.cc",
                 "src/cryptonote_basic/cryptonote_format_utils.cpp",

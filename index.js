@@ -1,4 +1,4 @@
-module.exports = require('bindings')('cryptoforknote.node');
+module.exports = require('bindings')('blocktemplate.node');
 
 const SHA3    = require('sha3');
 const bitcoin = require('bitcoinjs-lib');

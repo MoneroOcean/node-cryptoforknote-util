@@ -1,7 +1,7 @@
 {
-  "name": "cryptoforknote-util",
-  "version": "v15.8.12",
-  "description": "Native utilities for Cryptonote-family block template and blob handling",
+  "name": "node-blocktemplate",
+  "version": "v15.8.13",
+  "description": "Native utilities for multichain block template and blob handling",
   "main": "index.js",
   "gypfile": true,
   "files": [
@@ -23,12 +23,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/haven-protocol-org/node-cryptoforknote-util.git"
+    "url": "https://github.com/MoneroOcean/node-blocktemplate.git"
   },
   "bugs": {
-    "url": "https://github.com/haven-protocol-org/node-cryptoforknote-util/issues"
+    "url": "https://github.com/MoneroOcean/node-blocktemplate/issues"
   },
-  "homepage": "https://github.com/haven-protocol-org/node-cryptoforknote-util#readme",
+  "homepage": "https://github.com/MoneroOcean/node-blocktemplate#readme",
   "dependencies": {
     "bech32": "2.0.0",
     "bindings": "1.5.0",
