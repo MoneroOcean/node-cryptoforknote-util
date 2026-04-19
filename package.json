@@ -1,7 +1,7 @@
 {
   "name": "node-blocktemplate",
-  "version": "v15.8.14",
-  "description": "Native utilities for multichain block template and blob handling",
+  "version": "v15.8.15",
+  "description": "Native Node.js addon for multichain block templates, block blobs, and merged-mining helpers used by pool backends",
   "main": "index.js",
   "gypfile": true,
   "files": [
@@ -21,6 +21,7 @@
     "name": "LucasJones",
     "email": "lucasjonesdev@hotmail.co.uk"
   },
+  "license": "BSD-3-Clause AND MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/MoneroOcean/node-blocktemplate.git"
@@ -29,6 +30,10 @@
     "url": "https://github.com/MoneroOcean/node-blocktemplate/issues"
   },
   "homepage": "https://github.com/MoneroOcean/node-blocktemplate#readme",
+  "os": [
+    "darwin",
+    "linux"
+  ],
   "dependencies": {
     "bech32": "2.0.0",
     "bindings": "1.5.0",
@@ -38,10 +43,19 @@
     "varuint-bitcoin": "1.1.2"
   },
   "keywords": [
-    "cryptonight",
+    "blocktemplate",
+    "block-blob",
     "cryptonote",
-    "forknote",
-    "bytecoin",
-    "monero"
+    "dero",
+    "erg",
+    "merged-mining",
+    "mining-pool",
+    "monero",
+    "native-addon",
+    "node-gyp",
+    "raven",
+    "rtm",
+    "salvium",
+    "zephyr"
   ]
 }
