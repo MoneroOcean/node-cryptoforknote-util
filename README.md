@@ -1,11 +1,17 @@
+<div align="center">
+
 # node-blocktemplate
 
 Native Node.js block template, blob, and merged-mining bindings for MoneroOcean-style pool tooling.
 
-[![Stability](https://img.shields.io/github/actions/workflow/status/MoneroOcean/node-blocktemplate/stability.yml?branch=master&label=stability)](https://github.com/MoneroOcean/node-blocktemplate/actions/workflows/stability.yml)
-![Node 18+](https://img.shields.io/badge/node-18%2B-green)
-![Linux and macOS](https://img.shields.io/badge/platform-linux%20%7C%20macOS-blue)
-![Native addon](https://img.shields.io/badge/build-native%20addon-6f42c1)
+<p>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause%20%2B%20MIT-111111.svg" alt="BSD-3-Clause and MIT"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D18-111111.svg" alt="Node 18+">
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS-111111.svg" alt="Linux and macOS">
+  <img src="https://img.shields.io/badge/focus-block%20templates-111111.svg" alt="Block templates">
+</p>
+
+</div>
 
 ## Overview
 `node-blocktemplate` is a native addon for Node.js that focuses on multichain block template handling for pool backends and related infrastructure.
