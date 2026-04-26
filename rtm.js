@@ -79,6 +79,45 @@ function varIntBuffer(n) {
   }
 }
 
+function readVarInt(buffer, offset) {
+  if (offset >= buffer.length) throw new Error('Unexpected end of varint');
+  const first = buffer[offset];
+  if (first < 0xfd) return { value: first, size: 1 };
+  if (first === 0xfd) {
+    if (offset + 3 > buffer.length) throw new Error('Unexpected end of varint');
+    return { value: buffer.readUInt16LE(offset + 1), size: 3 };
+  }
+  if (first === 0xfe) {
+    if (offset + 5 > buffer.length) throw new Error('Unexpected end of varint');
+    return { value: buffer.readUInt32LE(offset + 1), size: 5 };
+  }
+
+  if (offset + 9 > buffer.length) throw new Error('Unexpected end of varint');
+  const value = buffer.readBigUInt64LE(offset + 1);
+  if (value > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Varint exceeds safe integer range');
+  return { value: Number(value), size: 9 };
+}
+
+function validateRtmTransaction(buffer) {
+  try {
+    bitcoin.Transaction.fromBuffer(buffer, false, false);
+    return true;
+  } catch(err) {
+    if (err.message !== 'Transaction has unexpected data') throw err;
+  }
+
+  const tx = bitcoin.Transaction.fromBuffer(buffer, true, false);
+  const txType = (tx.version >>> 16);
+  if (txType === 0) throw new Error('Transaction has unexpected data');
+
+  const payloadOffset = tx.byteLength();
+  const payloadLength = readVarInt(buffer, payloadOffset);
+  if (payloadOffset + payloadLength.size + payloadLength.value !== buffer.length) {
+    throw new Error('Transaction has unexpected data');
+  }
+  return true;
+}
+
 // "serialized CScript" formatting as defined here:
 // https://github.com/bitcoin/bips/blob/master/bip-0034.mediawiki#specification
 // Used to format height and date when putting into script signature:
@@ -315,7 +354,7 @@ module.exports.RtmBlockTemplate = function(rpcData, poolAddress) {
   rpcData.transactions.forEach(function(tx) {
     if (tx.version != 1) {
       try {
-        bitcoin.Transaction.fromBuffer(Buffer.from(tx.data, 'hex'), false, false);
+        validateRtmTransaction(Buffer.from(tx.data, 'hex'));
       } catch(err) {
         console.error("Skip RTM tx due to parse error: " + tx.data);
         return; // skip transaction if it is not parsed OK (varint coding seems to be different for RTM)

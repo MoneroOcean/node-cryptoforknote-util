@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const blocktemplate = require("../build/Release/blocktemplate");
 const blocktemplateJs = require("../index.js");
+const rtm = require("../rtm.js");
 
 const cases = [
   {
@@ -146,4 +147,23 @@ test("convertRtmBlob handles RTM coinbase payload", () => {
     actual,
     "000000205e54ede158d2cd4cd4dddb7f1e74316f52ce631a6d2f738c44da85cb0d13c209179bf7e1e32068f0c4058d7fa31dcb51448baead21123aa600656e3c802c76cfc5d2d56946a8041d00000000"
   );
+});
+
+test("RtmBlockTemplate includes special transaction payloads", () => {
+  const txHex = "0300020001f189c058fc197826cec441160f8395be58f6934661c2f6054a067cd25a050749470000006a473044022001b0264312ef5f1c7f8c6843f31b625fc76c2e5848ded7ae8b94158b4166c831022045a093291ceb88adaf51d71e2329b95a6d6ac64a9fed32e85c9eecf317e3cf400121023b91003cc79ca481f3b54d2e55fb3a34cf25c7985a3c1d15ae8b2883d2488a45feffffff012ac89a3b000000001976a91426d6b7e9fc7dbbff032671e6428cb9fe5775cf1d88ac00000000b50100ace0340b5fc4ace3961a901b6855b4ddc041d558b64332ca4c72d74b084b02f100000000000000000000ffff4ebbb50227f200a03b94374a8f31ea85034739c37179fc99544bd35a3b4266d5ebc043a06df114839a7e28a7a7d608e8e4a0a7f6f9b904223f639ffa678fa40e9bd14c7e76bd07be2033e213ce8d558b9761baa2b62c4e06e740236a5ec15c6b61ba39a19d5bc6b813440a424976c0da7e7ecd47084f812f7c19381e76300da0d65189d36dc313";
+
+  const actual = rtm.RtmBlockTemplate({
+    previousblockhash: "00".repeat(32),
+    version: 0x20000000,
+    curtime: 1710000000,
+    bits: "1d00ffff",
+    target: "00000000ffff0000000000000000000000000000000000000000000000000000",
+    height: 1,
+    coinbaseaux: { flags: "" },
+    coinbasevalue: 5000000000,
+    transactions: [{ version: 3, data: txHex }]
+  }, "RUCyaEZxQu3Eure73XPQ57si813RYAMQKC");
+
+  assert.equal(actual.blocktemplate_blob.slice(160, 162), "02");
+  assert.ok(actual.blocktemplate_blob.endsWith(txHex));
 });
