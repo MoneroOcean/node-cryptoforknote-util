@@ -180,7 +180,16 @@ function update_merkle_root_hash(offset, payload, blob_in, blob_out, transaction
   offset += varuint.decode.bytes;
   let transactions = [];
   for (let i = 0; i < nTransactions; ++i) {
-    const tx = bitcoin.Transaction.fromBuffer(blob_in.slice(offset), true, payload && i == 0);
+    const tx = bitcoin.Transaction.fromBuffer(blob_in.slice(offset), true, false);
+    const txType = tx.version >>> 16;
+    if (payload && !tx.payload && txType !== 0) {
+      const payloadOffset = tx.byteLength();
+      const payloadLength = varuint.decode(blob_in, offset + payloadOffset);
+      const payloadStart = offset + payloadOffset + varuint.decode.bytes;
+      const payloadEnd = payloadStart + payloadLength;
+      if (payloadEnd > blob_in.length) throw new Error('Transaction has unexpected data');
+      tx.payload = blob_in.slice(payloadStart, payloadEnd);
+    }
     transactions.push(tx);
     offset += tx.byteLength();
   }

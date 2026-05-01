@@ -333,12 +333,14 @@ module.exports.RtmBlockTemplate = function(rpcData, poolAddress) {
     packUInt32LE(0) // txLockTime
   ]);
 
-  if (rpcData.coinbase_payload) {
-     blob2 = Buffer.concat([
-       blob2,
-       varIntBuffer(rpcData.coinbase_payload.length / 2),
-       Buffer.from(rpcData.coinbase_payload, 'hex')
-     ]);
+  const coinbaseTxType = coinbaseVersion.readUInt16LE(2);
+  if (rpcData.coinbase_payload || coinbaseTxType !== 0) {
+    const coinbasePayload = rpcData.coinbase_payload ? Buffer.from(rpcData.coinbase_payload, 'hex') : Buffer.alloc(0);
+    blob2 = Buffer.concat([
+      blob2,
+      varIntBuffer(coinbasePayload.length),
+      coinbasePayload
+    ]);
   }
 
   const prev_hash = reverseBuffer(Buffer.from(rpcData.previousblockhash, 'hex')).toString('hex');

@@ -149,9 +149,24 @@ test("convertRtmBlob handles RTM coinbase payload", () => {
   );
 });
 
-test("RtmBlockTemplate includes special transaction payloads", () => {
-  const txHex = "0300020001f189c058fc197826cec441160f8395be58f6934661c2f6054a067cd25a050749470000006a473044022001b0264312ef5f1c7f8c6843f31b625fc76c2e5848ded7ae8b94158b4166c831022045a093291ceb88adaf51d71e2329b95a6d6ac64a9fed32e85c9eecf317e3cf400121023b91003cc79ca481f3b54d2e55fb3a34cf25c7985a3c1d15ae8b2883d2488a45feffffff012ac89a3b000000001976a91426d6b7e9fc7dbbff032671e6428cb9fe5775cf1d88ac00000000b50100ace0340b5fc4ace3961a901b6855b4ddc041d558b64332ca4c72d74b084b02f100000000000000000000ffff4ebbb50227f200a03b94374a8f31ea85034739c37179fc99544bd35a3b4266d5ebc043a06df114839a7e28a7a7d608e8e4a0a7f6f9b904223f639ffa678fa40e9bd14c7e76bd07be2033e213ce8d558b9761baa2b62c4e06e740236a5ec15c6b61ba39a19d5bc6b813440a424976c0da7e7ecd47084f812f7c19381e76300da0d65189d36dc313";
+const rtmSpecialTxHex = "0300020001f189c058fc197826cec441160f8395be58f6934661c2f6054a067cd25a050749470000006a473044022001b0264312ef5f1c7f8c6843f31b625fc76c2e5848ded7ae8b94158b4166c831022045a093291ceb88adaf51d71e2329b95a6d6ac64a9fed32e85c9eecf317e3cf400121023b91003cc79ca481f3b54d2e55fb3a34cf25c7985a3c1d15ae8b2883d2488a45feffffff012ac89a3b000000001976a91426d6b7e9fc7dbbff032671e6428cb9fe5775cf1d88ac00000000b50100ace0340b5fc4ace3961a901b6855b4ddc041d558b64332ca4c72d74b084b02f100000000000000000000ffff4ebbb50227f200a03b94374a8f31ea85034739c37179fc99544bd35a3b4266d5ebc043a06df114839a7e28a7a7d608e8e4a0a7f6f9b904223f639ffa678fa40e9bd14c7e76bd07be2033e213ce8d558b9761baa2b62c4e06e740236a5ec15c6b61ba39a19d5bc6b813440a424976c0da7e7ecd47084f812f7c19381e76300da0d65189d36dc313";
+const rtmNormalTxHex = "0200000001" + "11".repeat(32) + "000000000151feffffff01e803000000000000015100000000";
 
+function buildRtmTemplate(transactions, overrides = {}) {
+  return rtm.RtmBlockTemplate(Object.assign({
+    previousblockhash: "00".repeat(32),
+    version: 0x20000000,
+    curtime: 1710000000,
+    bits: "1d00ffff",
+    target: "00000000ffff0000000000000000000000000000000000000000000000000000",
+    height: 1,
+    coinbaseaux: { flags: "" },
+    coinbasevalue: 5000000000,
+    transactions
+  }, overrides), "RUCyaEZxQu3Eure73XPQ57si813RYAMQKC");
+}
+
+test("RtmBlockTemplate includes special transaction payloads", () => {
   const actual = rtm.RtmBlockTemplate({
     previousblockhash: "00".repeat(32),
     version: 0x20000000,
@@ -161,9 +176,62 @@ test("RtmBlockTemplate includes special transaction payloads", () => {
     height: 1,
     coinbaseaux: { flags: "" },
     coinbasevalue: 5000000000,
-    transactions: [{ version: 3, data: txHex }]
+    transactions: [{ version: 3, data: rtmSpecialTxHex }]
   }, "RUCyaEZxQu3Eure73XPQ57si813RYAMQKC");
 
   assert.equal(actual.blocktemplate_blob.slice(160, 162), "02");
-  assert.ok(actual.blocktemplate_blob.endsWith(txHex));
+  assert.ok(actual.blocktemplate_blob.endsWith(rtmSpecialTxHex));
+});
+
+test("convertRtmBlob handles RTM special payloads before later transactions", () => {
+  const originalDateNow = Date.now;
+  Date.now = () => 1710000000000;
+
+  try {
+    const template = rtm.RtmBlockTemplate({
+      previousblockhash: "00".repeat(32),
+      version: 0x20000000,
+      curtime: 1710000000,
+      bits: "1d00ffff",
+      target: "00000000ffff0000000000000000000000000000000000000000000000000000",
+      height: 1,
+      coinbaseaux: { flags: "" },
+      coinbasevalue: 5000000000,
+      coinbase_payload: "abcd",
+      transactions: [
+        { version: 3, data: rtmSpecialTxHex },
+        { version: 2, data: rtmNormalTxHex }
+      ]
+    }, "RUCyaEZxQu3Eure73XPQ57si813RYAMQKC");
+
+    const actual = blocktemplateJs.convertRtmBlob(Buffer.from(template.blocktemplate_blob, "hex")).toString("hex");
+
+    assert.strictEqual(
+      actual,
+      "00000020000000000000000000000000000000000000000000000000000000000000000038947a729925a67a53bfdd9d79cea1acd9dc18aa4e5dac9303e4f45e93bd8e6f8087ec65ffff001d00000000"
+    );
+  } finally {
+    Date.now = originalDateNow;
+  }
+});
+
+test("convertRtmBlob handles RTM special coinbase without daemon payload", () => {
+  const originalDateNow = Date.now;
+  Date.now = () => 1710000000000;
+
+  try {
+    const template = buildRtmTemplate([
+      { version: 3, data: rtmSpecialTxHex },
+      { version: 2, data: rtmNormalTxHex }
+    ]);
+
+    const actual = blocktemplateJs.convertRtmBlob(Buffer.from(template.blocktemplate_blob, "hex")).toString("hex");
+
+    assert.strictEqual(
+      actual,
+      "000000200000000000000000000000000000000000000000000000000000000000000000dcfc2be89415b5d826ac3b4a1ac1a4db2a7ad8578e63f0ffb4678978f5b8a2958087ec65ffff001d00000000"
+    );
+  } finally {
+    Date.now = originalDateNow;
+  }
 });
