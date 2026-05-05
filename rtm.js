@@ -98,25 +98,175 @@ function readVarInt(buffer, offset) {
   return { value: Number(value), size: 9 };
 }
 
-function validateRtmTransaction(buffer) {
-  try {
-    bitcoin.Transaction.fromBuffer(buffer, false, false);
-    return true;
-  } catch(err) {
-    if (err.message !== 'Transaction has unexpected data') throw err;
+function readSlice(buffer, offset, size, context) {
+  if (offset + size > buffer.length) throw new Error('Unexpected end of RTM transaction' + (context ? ': ' + context : ''));
+  return {
+    value: buffer.slice(offset, offset + size),
+    offset: offset + size
+  };
+}
+
+function readTxVarInt(buffer, offset, context) {
+  const parsed = readVarInt(buffer, offset);
+  return {
+    value: parsed.value,
+    offset: offset + parsed.size
+  };
+}
+
+function readVarSlice(buffer, offset, context) {
+  const parsed = readTxVarInt(buffer, offset, context);
+  const slice = readSlice(buffer, parsed.offset, parsed.value, context);
+  return {
+    value: slice.value,
+    offset: slice.offset
+  };
+}
+
+function readWitnessVector(buffer, offset) {
+  const count = readTxVarInt(buffer, offset, 'witness item count');
+  let nextOffset = count.offset;
+  let vector = [];
+  for (let i = 0; i < count.value; i++) {
+    const item = readVarSlice(buffer, nextOffset, 'witness item');
+    vector.push(item.value);
+    nextOffset = item.offset;
+  }
+  return {
+    value: vector,
+    offset: nextOffset
+  };
+}
+
+function hasWitnesses(tx) {
+  return tx.ins.some(function(input) {
+    return input.witness && input.witness.length > 0;
+  });
+}
+
+function isCoinbaseHash(hash) {
+  for (let i = 0; i < hash.length; i++) {
+    if (hash[i] !== 0) return false;
+  }
+  return true;
+}
+
+function createParsedTransaction(version, ins, outs, payload, rawWithWitness, rawNoWitness) {
+  return {
+    version: version,
+    ins: ins,
+    outs: outs,
+    payload: payload,
+    hasWitnesses: function() {
+      return hasWitnesses(this);
+    },
+    isCoinbase: function() {
+      return this.ins.length === 1 && isCoinbaseHash(this.ins[0].hash);
+    },
+    byteLength: function(allowWitness) {
+      return this.__toBuffer(undefined, undefined, allowWitness).length;
+    },
+    __toBuffer: function(_buffer, _initialOffset, allowWitness) {
+      return allowWitness && this.hasWitnesses() ? rawWithWitness : rawNoWitness;
+    }
+  };
+}
+
+function readTransaction(buffer, offset, readPayload) {
+  const start = offset;
+  const versionSlice = readSlice(buffer, offset, 4, 'version');
+  const version = versionSlice.value.readInt32LE(0);
+  const txVersion = version & 0xffff;
+  const txType = version >>> 16;
+  offset = versionSlice.offset;
+
+  if (txVersion < 1 || txVersion > 3) throw new Error('Unsupported RTM transaction version');
+
+  let hasWitnessMarker = false;
+  if (offset + 2 <= buffer.length &&
+      buffer[offset] === bitcoin.Transaction.ADVANCED_TRANSACTION_MARKER &&
+      buffer[offset + 1] === bitcoin.Transaction.ADVANCED_TRANSACTION_FLAG) {
+    hasWitnessMarker = true;
+    offset += 2;
   }
 
-  const tx = bitcoin.Transaction.fromBuffer(buffer, true, false);
-  const txType = (tx.version >>> 16);
-  if (txType === 0) throw new Error('Transaction has unexpected data');
+  const inputCount = readTxVarInt(buffer, offset, 'input count');
+  offset = inputCount.offset;
+  let ins = [];
+  for (let i = 0; i < inputCount.value; i++) {
+    const hash = readSlice(buffer, offset, 32, 'input hash');
+    const index = readSlice(buffer, hash.offset, 4, 'input index');
+    const script = readVarSlice(buffer, index.offset, 'input script');
+    const sequence = readSlice(buffer, script.offset, 4, 'input sequence');
+    ins.push({
+      hash: hash.value,
+      index: index.value.readUInt32LE(0),
+      script: script.value,
+      sequence: sequence.value.readUInt32LE(0),
+      witness: []
+    });
+    offset = sequence.offset;
+  }
 
-  const payloadOffset = tx.byteLength();
-  const payloadLength = readVarInt(buffer, payloadOffset);
-  if (payloadOffset + payloadLength.size + payloadLength.value !== buffer.length) {
+  const outputCount = readTxVarInt(buffer, offset, 'output count');
+  offset = outputCount.offset;
+  let outs = [];
+  for (let i = 0; i < outputCount.value; i++) {
+    const value = readSlice(buffer, offset, 8, 'output value');
+    const script = readVarSlice(buffer, value.offset, 'output script');
+    outs.push({
+      valueBuffer: value.value,
+      script: script.value
+    });
+    offset = script.offset;
+  }
+
+  const witnessStart = offset;
+  if (hasWitnessMarker) {
+    for (let i = 0; i < inputCount.value; i++) {
+      const witness = readWitnessVector(buffer, offset);
+      ins[i].witness = witness.value;
+      offset = witness.offset;
+    }
+    if (!ins.some(function(input) { return input.witness.length > 0; })) {
+      throw new Error('Transaction has superfluous witness data');
+    }
+  }
+
+  const locktimeStart = offset;
+  offset = readSlice(buffer, offset, 4, 'locktime').offset;
+
+  let payload = null;
+  if (readPayload && txVersion === 3 && txType !== 0) {
+    const payloadSlice = readVarSlice(buffer, offset, 'extra payload');
+    payload = payloadSlice.value;
+    offset = payloadSlice.offset;
+  }
+
+  const rawWithWitness = buffer.slice(start, offset);
+  const rawNoWitness = hasWitnessMarker ?
+    Buffer.concat([
+      buffer.slice(start, start + 4),
+      buffer.slice(start + 6, witnessStart),
+      buffer.slice(locktimeStart, offset)
+    ]) :
+    rawWithWitness;
+
+  return {
+    transaction: createParsedTransaction(version, ins, outs, payload, rawWithWitness, rawNoWitness),
+    offset: offset
+  };
+}
+
+function validateRtmTransaction(buffer) {
+  const parsed = readTransaction(buffer, 0, true);
+  if (parsed.offset !== buffer.length) {
     throw new Error('Transaction has unexpected data');
   }
   return true;
 }
+
+module.exports.readTransaction = readTransaction;
 
 // "serialized CScript" formatting as defined here:
 // https://github.com/bitcoin/bips/blob/master/bip-0034.mediawiki#specification

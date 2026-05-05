@@ -180,18 +180,16 @@ function update_merkle_root_hash(offset, payload, blob_in, blob_out, transaction
   offset += varuint.decode.bytes;
   let transactions = [];
   for (let i = 0; i < nTransactions; ++i) {
-    const tx = bitcoin.Transaction.fromBuffer(blob_in.slice(offset), true, false);
-    const txType = tx.version >>> 16;
-    if (payload && !tx.payload && txType !== 0) {
-      const payloadOffset = tx.byteLength();
-      const payloadLength = varuint.decode(blob_in, offset + payloadOffset);
-      const payloadStart = offset + payloadOffset + varuint.decode.bytes;
-      const payloadEnd = payloadStart + payloadLength;
-      if (payloadEnd > blob_in.length) throw new Error('Transaction has unexpected data');
-      tx.payload = blob_in.slice(payloadStart, payloadEnd);
+    let tx;
+    if (payload) {
+      const parsed = rtm.readTransaction(blob_in, offset, true);
+      tx = parsed.transaction;
+      offset = parsed.offset;
+    } else {
+      tx = bitcoin.Transaction.fromBuffer(blob_in.slice(offset), true, false);
+      offset += tx.byteLength();
     }
     transactions.push(tx);
-    offset += tx.byteLength();
   }
   getMerkleRoot(transactions, transaction_hash_func, detectWitness).copy(blob_out, 4 + 32);
 };

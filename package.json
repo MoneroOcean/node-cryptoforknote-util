@@ -1,6 +1,6 @@
 {
   "name": "node-blocktemplate",
-  "version": "15.8.18",
+  "version": "15.8.19",
   "description": "Native Node.js addon for multichain block templates, block blobs, and merged-mining helpers used by pool backends",
   "main": "index.js",
   "gypfile": true,
@@ -37,7 +37,7 @@
   "dependencies": {
     "bech32": "2.0.0",
     "bindings": "1.5.0",
-    "bitcoinjs-lib": "git+https://github.com/MoneroOcean/bitcoinjs-lib.git",
+    "bitcoinjs-lib": "6.1.7",
     "merkle-lib": "2.0.10",
     "sha3": "2.1.4",
     "varuint-bitcoin": "1.1.2"
