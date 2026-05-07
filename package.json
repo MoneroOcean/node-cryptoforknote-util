@@ -12,6 +12,7 @@
     "src"
   ],
   "scripts": {
+    "pretest": "node tests/ensure-build.js",
     "test": "node --test --test-reporter=spec tests/test.js"
   },
   "engines": {
