@@ -16,7 +16,8 @@
     "test": "node --test --test-reporter=spec tests/test.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.9.0",
+    "npm": ">=11.10.0"
   },
   "author": {
     "name": "LucasJones",
